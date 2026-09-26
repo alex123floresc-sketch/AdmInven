@@ -5,6 +5,7 @@ target/
 
 # Datos locales de la aplicación
 data/
+demo/
 
 # IntelliJ (se versionan solo los archivos compartibles)
 .idea/workspace.xml

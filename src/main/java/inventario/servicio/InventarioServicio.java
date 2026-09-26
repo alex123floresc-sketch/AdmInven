@@ -190,6 +190,16 @@ public class InventarioServicio {
         return movimientos.listarPorProducto(obtener(codigo).getCodigo());
     }
 
+    /** Todos los movimientos, del más reciente al más antiguo. */
+    public List<Movimiento> listarMovimientos() {
+        return movimientos.listar().reversed();
+    }
+
+    /** Categorías usadas por los productos activos, en orden alfabético. */
+    public List<String> listarCategorias() {
+        return listarProductos().stream().map(Producto::getCategoria).distinct().sorted().toList();
+    }
+
     public List<Movimiento> ultimosMovimientos(int limite) {
         List<Movimiento> todos = movimientos.listar();
         return todos.subList(Math.max(0, todos.size() - limite), todos.size()).reversed();

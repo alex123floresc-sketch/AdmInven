@@ -409,6 +409,26 @@ class InventarioServicioTest {
     }
 
     @Test
+    void listarMovimientosDevuelveTodosDelMasRecienteAlMasAntiguo() {
+        registrarArroz(20);
+        servicio.registrarSalida("ARR-01", 1, "venta");
+
+        assertEquals(List.of("venta", "Stock inicial"),
+                servicio.listarMovimientos().stream().map(Movimiento::nota).toList());
+    }
+
+    @Test
+    void listarCategoriasDevuelveLasDeProductosActivosSinRepetir() {
+        servicio.registrarProducto("A", "Arroz", "Granos", BigDecimal.ONE, 0, 0);
+        servicio.registrarProducto("B", "Frejol", "Granos", BigDecimal.ONE, 0, 0);
+        servicio.registrarProducto("C", "Leche", "Lácteos", BigDecimal.ONE, 0, 0);
+        servicio.registrarProducto("D", "Jabón", "Limpieza", BigDecimal.ONE, 0, 0);
+        servicio.darDeBajaProducto("D");
+
+        assertEquals(List.of("Granos", "Lácteos"), servicio.listarCategorias());
+    }
+
+    @Test
     void obtenerDevuelveLaMismaInstanciaGuardada() {
         Producto p = registrarArroz(1);
 

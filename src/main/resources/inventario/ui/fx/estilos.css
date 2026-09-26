@@ -1,0 +1,241 @@
+/* Paleta y tipografía de la aplicación. Los colores se definen una vez como variables en .root. */
+.root {
+    -color-fondo: #f4f6f9;
+    -color-superficie: #ffffff;
+    -color-borde: #dde2ea;
+    -color-texto: #1f2937;
+    -color-texto-suave: #6b7280;
+    -color-primario: #2458d6;
+    -color-primario-oscuro: #1c46ab;
+    -color-peligro: #c2372f;
+    -color-exito: #1c7f4d;
+    -color-aviso-fondo: #fdeceb;
+    -color-aviso-texto: #a12c25;
+
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
+    -fx-font-size: 13px;
+    -fx-base: #eef1f5;
+    -fx-accent: -color-primario;
+    -fx-focus-color: -color-primario;
+    -fx-faint-focus-color: #2458d622;
+    -fx-text-base-color: -color-texto;
+}
+
+.raiz {
+    -fx-background-color: -color-fondo;
+}
+
+/* Encabezado */
+.encabezado {
+    -fx-background-color: #17233b;
+}
+.encabezado-titulo {
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+.encabezado-subtitulo {
+    -fx-text-fill: #a9b4c8;
+    -fx-font-size: 11px;
+}
+
+/* Pestañas */
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 8 16 8 16;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-border-color: transparent transparent -color-primario transparent;
+    -fx-border-width: 0 0 3 0;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -color-texto-suave;
+    -fx-font-weight: bold;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -color-primario;
+}
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: -color-superficie;
+    -fx-border-color: transparent transparent -color-borde transparent;
+}
+.tab-pane:focused > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+
+/* Botones */
+.button {
+    -fx-background-color: -color-superficie;
+    -fx-border-color: -color-borde;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: #eef2f8;
+}
+.button.primario {
+    -fx-background-color: -color-primario;
+    -fx-border-color: -color-primario;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.button.primario:hover {
+    -fx-background-color: -color-primario-oscuro;
+}
+.button.peligro {
+    -fx-text-fill: -color-peligro;
+    -fx-border-color: #e8b4b0;
+}
+.button:disabled {
+    -fx-opacity: 0.45;
+}
+.separador-vertical {
+    -fx-min-width: 1;
+    -fx-pref-width: 1;
+    -fx-background-color: -color-borde;
+    -fx-padding: 0 0 0 0;
+}
+
+/* Campos */
+.text-field, .combo-box, .password-field, .date-picker {
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+/* Tablas */
+.table-view {
+    -fx-background-color: -color-superficie;
+    -fx-border-color: -color-borde;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 1;
+}
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: #f7f8fb;
+    -fx-border-color: transparent transparent -color-borde transparent;
+}
+.table-view .column-header .label {
+    -fx-text-fill: -color-texto-suave;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+.table-view .column-header.columna-numero .label {
+    -fx-alignment: center-right;
+}
+.table-row-cell {
+    -fx-cell-size: 30px;
+    -fx-background-color: -color-superficie;
+    -fx-border-color: transparent transparent #eef0f4 transparent;
+}
+.table-row-cell:hover {
+    -fx-background-color: #f3f6fc;
+}
+.table-row-cell:selected {
+    -fx-background-color: #dce7ff;
+}
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: -color-texto;
+}
+.table-row-cell:stock-bajo {
+    -fx-background-color: -color-aviso-fondo;
+}
+.table-row-cell:stock-bajo .table-cell {
+    -fx-text-fill: -color-aviso-texto;
+}
+.table-row-cell:stock-bajo:selected {
+    -fx-background-color: #f7cfcb;
+}
+.table-row-cell:inactivo .table-cell {
+    -fx-text-fill: #9aa1ad;
+}
+.table-cell {
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+    -fx-border-color: transparent;
+}
+.table-cell.columna-numero {
+    -fx-alignment: center-right;
+}
+.tipo-entrada {
+    -fx-text-fill: -color-exito;
+    -fx-font-weight: bold;
+}
+.tipo-salida {
+    -fx-text-fill: -color-peligro;
+    -fx-font-weight: bold;
+}
+.tipo-ajuste {
+    -fx-text-fill: #9a6700;
+    -fx-font-weight: bold;
+}
+
+/* Resumen */
+.tarjeta {
+    -fx-background-color: -color-superficie;
+    -fx-border-color: -color-borde;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 14 18 14 18;
+}
+.tarjeta-titulo {
+    -fx-text-fill: -color-texto-suave;
+    -fx-font-size: 12px;
+}
+.tarjeta-valor {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+.tarjeta-alerta {
+    -fx-background-color: -color-aviso-fondo;
+    -fx-border-color: #f1b5b0;
+}
+.tarjeta-alerta .tarjeta-valor, .tarjeta-alerta .tarjeta-titulo {
+    -fx-text-fill: -color-aviso-texto;
+}
+.panel {
+    -fx-background-color: -color-superficie;
+    -fx-border-color: -color-borde;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 14;
+}
+.panel .table-view {
+    -fx-border-color: transparent;
+}
+.titulo-panel {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.scroll-pane.sin-borde, .scroll-pane.sin-borde > .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+/* Textos */
+.texto-secundario {
+    -fx-text-fill: -color-texto-suave;
+}
+.texto-destacado {
+    -fx-font-weight: bold;
+}
+.etiqueta-campo {
+    -fx-text-fill: -color-texto-suave;
+}
+.mensaje-error {
+    -fx-text-fill: -color-aviso-texto;
+    -fx-background-color: -color-aviso-fondo;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10 8 10;
+}
+
+/* Diálogos */
+.dialog-pane {
+    -fx-background-color: -color-superficie;
+    -fx-padding: 8;
+}
+.dialog-pane > .button-bar > .container {
+    -fx-padding: 8 0 0 0;
+}
