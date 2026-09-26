@@ -4,9 +4,13 @@ import inventario.modelo.Producto;
 import inventario.persistencia.MovimientoRepositorio;
 import inventario.persistencia.ProductoRepositorio;
 import inventario.persistencia.ProveedorRepositorio;
+import inventario.modelo.Rol;
 import inventario.persistencia.Transacciones;
+import inventario.persistencia.UsuarioRepositorio;
 import inventario.servicio.InventarioServicio;
 import inventario.servicio.ProveedorServicio;
+import inventario.servicio.Sesion;
+import inventario.servicio.UsuarioServicio;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,16 +51,31 @@ final class DatosDemo {
     private DatosDemo() {
     }
 
-    /** No hace nada si ya hay productos: nunca mezcla datos de ejemplo con datos reales. */
+    /**
+     * No hace nada si ya hay productos o usuarios: nunca mezcla datos de ejemplo con datos reales.
+     * Crea los usuarios de {@link Aplicacion#CREDENCIALES_DEMO}; las ventas quedan a nombre del vendedor y las
+     * compras y ajustes a nombre del administrador.
+     */
     static boolean cargarSiEstaVacia(ProductoRepositorio productos, MovimientoRepositorio movimientos,
-                                     ProveedorRepositorio repoProveedores, Transacciones transacciones) {
-        if (!productos.listar().isEmpty()) {
+                                     ProveedorRepositorio repoProveedores, UsuarioRepositorio repoUsuarios,
+                                     Transacciones transacciones) {
+        if (!productos.listar().isEmpty() || !repoUsuarios.listar().isEmpty()) {
             return false;
         }
         LocalDate hoy = LocalDate.now();
         RelojAjustable reloj = new RelojAjustable(hoy.minusDays(60).atTime(8, 0), ZoneId.systemDefault());
-        InventarioServicio servicio = new InventarioServicio(productos, movimientos, transacciones, reloj);
-        ProveedorServicio proveedores = new ProveedorServicio(repoProveedores);
+        Sesion sesionAdmin = Sesion.nueva();
+        Sesion sesionVendedor = Sesion.nueva();
+        UsuarioServicio usuarios = new UsuarioServicio(repoUsuarios, sesionAdmin);
+        usuarios.crearAdministradorInicial("admin", "Ana Torres (administradora)", "admin123".toCharArray());
+        usuarios.crearUsuario("vendedor", "Luis Quispe (vendedor)", Rol.VENDEDOR, "vendedor123".toCharArray());
+        new UsuarioServicio(repoUsuarios, sesionVendedor).iniciarSesion("vendedor", "vendedor123".toCharArray());
+
+        InventarioServicio servicio = new InventarioServicio(productos, movimientos, transacciones, reloj,
+                sesionAdmin);
+        InventarioServicio mostrador = new InventarioServicio(productos, movimientos, transacciones, reloj,
+                sesionVendedor);
+        ProveedorServicio proveedores = new ProveedorServicio(repoProveedores, sesionAdmin);
         Random azar = new Random(2026);
 
         transacciones.ejecutar(() -> {
@@ -72,7 +91,7 @@ final class DatosDemo {
             }
             for (int dia = 59; dia >= 0; dia--) {
                 LocalDate fecha = hoy.minusDays(dia);
-                simularDia(servicio, idsProveedores, reloj, azar, fecha, dia == 0);
+                simularDia(servicio, mostrador, idsProveedores, reloj, azar, fecha, dia == 0);
             }
             // Un producto descontinuado, para mostrar la baja lógica.
             servicio.darDeBajaProducto("LEN-500");
@@ -80,8 +99,8 @@ final class DatosDemo {
         return true;
     }
 
-    private static void simularDia(InventarioServicio servicio, List<Long> proveedores, RelojAjustable reloj,
-                                   Random azar, LocalDate fecha, boolean esHoy) {
+    private static void simularDia(InventarioServicio servicio, InventarioServicio mostrador, List<Long> proveedores,
+                                   RelojAjustable reloj, Random azar, LocalDate fecha, boolean esHoy) {
         int hora = 8;
         for (Articulo a : ARTICULOS) {
             Producto p = servicio.obtener(a.codigo());
@@ -89,7 +108,7 @@ final class DatosDemo {
             // Algunos productos se venden poco: sirven para el reporte de productos sin rotación.
             if (vendidas > 0 && !a.codigo().equals("CAF-200") && !a.codigo().equals("SAL-1K")) {
                 reloj.fijar(momento(fecha, hora++, azar));
-                servicio.registrarSalida(a.codigo(), vendidas, "Venta mostrador");
+                mostrador.registrarSalida(a.codigo(), vendidas, "Venta mostrador");
             }
             p = servicio.obtener(a.codigo());
             // Se repone cuando baja del mínimo; hoy no, para que haya alertas de stock bajo.

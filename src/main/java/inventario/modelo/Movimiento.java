@@ -12,6 +12,7 @@ import java.util.Objects;
  * @param precioUnitario  en las salidas, el precio de venta aplicado; 0 en los demás tipos
  * @param costoUnitario   costo por unidad: el de compra en las entradas, el del producto en salidas y ajustes
  * @param proveedorId     proveedor de una entrada, o {@code null}
+ * @param usuario         quién registró el movimiento; vacío en datos anteriores a la Fase 6
  */
 public record Movimiento(
         LocalDateTime fecha,
@@ -22,7 +23,8 @@ public record Movimiento(
         String nota,
         BigDecimal precioUnitario,
         BigDecimal costoUnitario,
-        Long proveedorId) {
+        Long proveedorId,
+        String usuario) {
 
     public Movimiento {
         Objects.requireNonNull(fecha, "fecha");
@@ -31,9 +33,18 @@ public record Movimiento(
         nota = nota == null ? "" : nota.strip();
         precioUnitario = importe(precioUnitario);
         costoUnitario = importe(costoUnitario);
+        usuario = usuario == null ? "" : usuario;
     }
 
-    /** Movimiento sin información económica (datos anteriores a la Fase 5). */
+    /** Movimiento sin usuario (datos anteriores a la Fase 6). */
+    public Movimiento(LocalDateTime fecha, String codigoProducto, TipoMovimiento tipo, int cantidad,
+                      int stockResultante, String nota, BigDecimal precioUnitario, BigDecimal costoUnitario,
+                      Long proveedorId) {
+        this(fecha, codigoProducto, tipo, cantidad, stockResultante, nota, precioUnitario, costoUnitario,
+                proveedorId, "");
+    }
+
+    /** Movimiento sin información económica ni usuario (datos anteriores a la Fase 5). */
     public Movimiento(LocalDateTime fecha, String codigoProducto, TipoMovimiento tipo, int cantidad,
                       int stockResultante, String nota) {
         this(fecha, codigoProducto, tipo, cantidad, stockResultante, nota, BigDecimal.ZERO, BigDecimal.ZERO, null);

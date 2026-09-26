@@ -3,7 +3,9 @@ package inventario.persistencia.sqlite;
 import inventario.modelo.Movimiento;
 import inventario.modelo.Producto;
 import inventario.modelo.Proveedor;
+import inventario.modelo.Rol;
 import inventario.modelo.TipoMovimiento;
+import inventario.modelo.Usuario;
 import inventario.persistencia.PersistenciaException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,6 +122,32 @@ class SqliteRepositoriosTest {
         assertFalse(proveedores.buscarPorId(andina.id()).orElseThrow().activo());
         assertThrows(PersistenciaException.class,
                 () -> proveedores.guardar(new Proveedor(null, "bebidas", "", "", "", true)));
+    }
+
+    @Test
+    void usuariosSeGuardanYActualizanPorNombre() {
+        SqliteUsuarioRepositorio usuarios = new SqliteUsuarioRepositorio(bd);
+        usuarios.guardar(new Usuario("luis", "Luis Quispe", Rol.VENDEDOR, "hash-1", true));
+        usuarios.guardar(new Usuario("admin", "Ana Torres", Rol.ADMINISTRADOR, "hash-2", true));
+
+        usuarios.guardar(new Usuario("luis", "Luis Quispe", Rol.ADMINISTRADOR, "hash-3", false));
+
+        assertEquals(List.of("admin", "luis"), usuarios.listar().stream().map(Usuario::nombreUsuario).toList());
+        Usuario luis = usuarios.buscar("luis").orElseThrow();
+        assertEquals(Rol.ADMINISTRADOR, luis.rol());
+        assertEquals("hash-3", luis.contrasena());
+        assertFalse(luis.activo());
+    }
+
+    @Test
+    void movimientoConservaElUsuarioQueLoRegistro() {
+        productos.guardar(new Producto("A1", "Arroz", "", BigDecimal.ONE, 0, 0));
+        Movimiento m = new Movimiento(LocalDateTime.of(2026, 9, 25, 9, 0), "A1", TipoMovimiento.SALIDA, 1, 0, "",
+                BigDecimal.ONE, BigDecimal.ONE, null, "luis");
+
+        movimientos.registrar(m);
+
+        assertEquals("luis", movimientos.listar().getFirst().usuario());
     }
 
     @Test

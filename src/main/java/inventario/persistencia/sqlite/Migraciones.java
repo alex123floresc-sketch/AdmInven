@@ -32,8 +32,9 @@ final class Migraciones {
             version++;
             conexion.setAutoCommit(false);
             try (Statement st = conexion.createStatement()) {
-                for (String sentencia : script.split(";")) {
-                    if (!sinComentarios(sentencia).isBlank()) {
+                // Se quitan los comentarios antes de separar: un ';' dentro de un comentario no corta la sentencia.
+                for (String sentencia : sinComentarios(script).split(";")) {
+                    if (!sentencia.isBlank()) {
                         st.execute(sentencia);
                     }
                 }

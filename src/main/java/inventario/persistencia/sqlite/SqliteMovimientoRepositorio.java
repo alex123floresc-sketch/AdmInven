@@ -13,7 +13,7 @@ import java.util.List;
 public class SqliteMovimientoRepositorio implements MovimientoRepositorio {
 
     private static final String COLUMNAS = "fecha, codigo_producto, tipo, cantidad, stock_resultante, nota, "
-            + "precio_unitario, costo_unitario, proveedor_id";
+            + "precio_unitario, costo_unitario, proveedor_id, usuario";
 
     private final BaseDeDatos bd;
 
@@ -23,9 +23,10 @@ public class SqliteMovimientoRepositorio implements MovimientoRepositorio {
 
     @Override
     public void registrar(Movimiento m) {
-        Jdbc.insertar(bd.conexion(), "INSERT INTO movimiento (" + COLUMNAS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        Jdbc.insertar(bd.conexion(),
+                "INSERT INTO movimiento (" + COLUMNAS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 m.fecha(), m.codigoProducto(), m.tipo(), m.cantidad(), m.stockResultante(), m.nota(),
-                m.precioUnitario(), m.costoUnitario(), m.proveedorId());
+                m.precioUnitario(), m.costoUnitario(), m.proveedorId(), m.usuario());
     }
 
     @Override
@@ -46,6 +47,6 @@ public class SqliteMovimientoRepositorio implements MovimientoRepositorio {
                 TipoMovimiento.valueOf(rs.getString("tipo")), rs.getInt("cantidad"),
                 rs.getInt("stock_resultante"), rs.getString("nota"),
                 new BigDecimal(rs.getString("precio_unitario")), new BigDecimal(rs.getString("costo_unitario")),
-                Jdbc.enteroONulo(rs, "proveedor_id"));
+                Jdbc.enteroONulo(rs, "proveedor_id"), rs.getString("usuario"));
     }
 }

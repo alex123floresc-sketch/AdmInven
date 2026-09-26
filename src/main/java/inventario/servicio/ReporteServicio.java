@@ -1,6 +1,7 @@
 package inventario.servicio;
 
 import inventario.modelo.Movimiento;
+import inventario.modelo.Permiso;
 import inventario.modelo.Producto;
 import inventario.modelo.Proveedor;
 import inventario.modelo.TipoMovimiento;
@@ -77,17 +78,26 @@ public class ReporteServicio {
     private final MovimientoRepositorio movimientos;
     private final ProveedorRepositorio proveedores;
     private final Clock reloj;
+    private final Sesion sesion;
 
     public ReporteServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
                            ProveedorRepositorio proveedores, Clock reloj) {
+        this(productos, movimientos, proveedores, reloj, Sesion.sinRestricciones());
+    }
+
+    /** Todos los reportes muestran costos y ganancias: requieren el permiso VER_REPORTES. */
+    public ReporteServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
+                           ProveedorRepositorio proveedores, Clock reloj, Sesion sesion) {
         this.productos = productos;
         this.movimientos = movimientos;
         this.proveedores = proveedores;
         this.reloj = reloj;
+        this.sesion = sesion;
     }
 
     /** Ventas entre dos fechas (ambas incluidas), de mayor a menor ingreso. */
     public ReporteVentas ventas(LocalDate desde, LocalDate hasta) {
+        sesion.requerir(Permiso.VER_REPORTES);
         Map<String, String> nombres = nombresDeProductos();
         Map<String, List<Movimiento>> porProducto = movimientosEntre(desde, hasta).stream()
                 .filter(m -> m.tipo() == TipoMovimiento.SALIDA)
@@ -112,6 +122,7 @@ public class ReporteServicio {
 
     /** Ingresos y ganancia de cada día del período, incluidos los días sin ventas. */
     public List<VentaDiaria> ventasPorDia(LocalDate desde, LocalDate hasta) {
+        sesion.requerir(Permiso.VER_REPORTES);
         Map<LocalDate, List<Movimiento>> porDia = movimientosEntre(desde, hasta).stream()
                 .filter(m -> m.tipo() == TipoMovimiento.SALIDA)
                 .collect(Collectors.groupingBy(m -> m.fecha().toLocalDate()));
@@ -129,6 +140,7 @@ public class ReporteServicio {
      * mercadería inmovilizada. Los que nunca se vendieron aparecen primero.
      */
     public List<ProductoSinRotacion> sinRotacion(int dias) {
+        sesion.requerir(Permiso.VER_REPORTES);
         if (dias <= 0) {
             throw new InventarioException("La cantidad de días debe ser mayor que cero.");
         }
@@ -152,6 +164,7 @@ public class ReporteServicio {
 
     /** Compras (entradas) agrupadas por proveedor en el período, de mayor a menor monto. */
     public List<LineaCompra> comprasPorProveedor(LocalDate desde, LocalDate hasta) {
+        sesion.requerir(Permiso.VER_REPORTES);
         Map<Long, String> nombres = proveedores.listar().stream()
                 .collect(Collectors.toMap(Proveedor::id, Proveedor::nombre));
         Map<String, List<Movimiento>> porProveedor = movimientosEntre(desde, hasta).stream()
@@ -170,6 +183,7 @@ public class ReporteServicio {
     // ---- Exportación ----
 
     public void exportarVentas(ReporteVentas reporte, Path archivo) {
+        sesion.requerir(Permiso.VER_REPORTES);
         List<List<String>> filas = new ArrayList<>();
         for (LineaVenta l : reporte.lineas()) {
             filas.add(List.of(l.codigo(), l.nombre(), String.valueOf(l.unidades()), texto(l.ingresos()),
@@ -181,6 +195,7 @@ public class ReporteServicio {
     }
 
     public void exportarInventario(Path archivo) {
+        sesion.requerir(Permiso.VER_REPORTES);
         List<List<String>> filas = productos.listar().stream()
                 .filter(Producto::isActivo)
                 .sorted(Comparator.comparing(Producto::getCodigo))

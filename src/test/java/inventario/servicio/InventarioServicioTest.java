@@ -47,7 +47,8 @@ class InventarioServicioTest {
         assertEquals("ARR-01", p.getCodigo());
         assertEquals(new BigDecimal("4.50"), p.getPrecio());
         assertEquals(List.of(new Movimiento(LocalDateTime.of(2026, 9, 25, 10, 15, 30), "ARR-01",
-                TipoMovimiento.ENTRADA, 20, 20, "Stock inicial")), movimientos.listar());
+                TipoMovimiento.ENTRADA, 20, 20, "Stock inicial", BigDecimal.ZERO, BigDecimal.ZERO, null, "sistema")),
+                movimientos.listar());
     }
 
     @Test

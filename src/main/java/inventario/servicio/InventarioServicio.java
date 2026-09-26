@@ -1,6 +1,7 @@
 package inventario.servicio;
 
 import inventario.modelo.Movimiento;
+import inventario.modelo.Permiso;
 import inventario.modelo.Producto;
 import inventario.modelo.TipoMovimiento;
 import inventario.persistencia.MovimientoRepositorio;
@@ -23,6 +24,7 @@ public class InventarioServicio {
     private final MovimientoRepositorio movimientos;
     private final Transacciones transacciones;
     private final Clock reloj;
+    private final Sesion sesion;
 
     public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
                               Transacciones transacciones) {
@@ -35,10 +37,16 @@ public class InventarioServicio {
 
     public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
                               Transacciones transacciones, Clock reloj) {
+        this(productos, movimientos, transacciones, reloj, Sesion.sinRestricciones());
+    }
+
+    public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
+                              Transacciones transacciones, Clock reloj, Sesion sesion) {
         this.productos = productos;
         this.movimientos = movimientos;
         this.transacciones = transacciones;
         this.reloj = reloj;
+        this.sesion = sesion;
     }
 
     // ---- Catálogo ----
@@ -51,6 +59,7 @@ public class InventarioServicio {
 
     public Producto registrarProducto(String codigo, String nombre, String categoria, BigDecimal precio,
                                       BigDecimal costo, int stockInicial, int stockMinimo) {
+        sesion.requerir(Permiso.GESTIONAR_PRODUCTOS);
         Producto producto = crearValidado(codigo, nombre, categoria, precio, costo, stockInicial, stockMinimo);
         validarCodigoDisponible(producto.getCodigo());
         try {
@@ -77,6 +86,7 @@ public class InventarioServicio {
 
     public Producto actualizarProducto(String codigo, String nombre, String categoria, BigDecimal precio,
                                        BigDecimal costo, int stockMinimo) {
+        sesion.requerir(Permiso.GESTIONAR_PRODUCTOS);
         Producto actual = obtenerActivo(codigo);
         // Se guarda una copia: si algo falla, el producto original queda intacto.
         Producto actualizado = crearValidado(actual.getCodigo(), nombre, categoria, precio, costo,
@@ -93,6 +103,7 @@ public class InventarioServicio {
      * Los que no se pueden registrar (código repetido, datos inválidos) se omiten y se informan.
      */
     public ResultadoImportacion importarProductos(List<Producto> nuevos) {
+        sesion.requerir(Permiso.GESTIONAR_PRODUCTOS);
         int importados = 0;
         List<String> omitidos = new ArrayList<>();
         for (Producto p : nuevos) {
@@ -109,10 +120,12 @@ public class InventarioServicio {
 
     /** Baja lógica: el producto sale del catálogo pero conserva su historial y puede reactivarse. */
     public void darDeBajaProducto(String codigo) {
+        sesion.requerir(Permiso.GESTIONAR_PRODUCTOS);
         cambiarEstado(obtenerActivo(codigo), false);
     }
 
     public void reactivarProducto(String codigo) {
+        sesion.requerir(Permiso.GESTIONAR_PRODUCTOS);
         Producto producto = obtener(codigo);
         if (producto.isActivo()) {
             throw new InventarioException("El producto " + producto.getCodigo() + " ya está activo.");
@@ -183,6 +196,7 @@ public class InventarioServicio {
      */
     public Producto registrarEntrada(String codigo, int cantidad, BigDecimal costoUnitario, Long proveedorId,
                                      String nota) {
+        sesion.requerir(Permiso.REGISTRAR_COMPRAS);
         validarCantidad(cantidad);
         Producto producto = obtenerActivo(codigo);
         BigDecimal costoCompra = costoUnitario == null ? producto.getCosto() : costoUnitario;
@@ -204,6 +218,7 @@ public class InventarioServicio {
 
     /** Venta al precio actual del producto; guarda precio y costo para calcular la ganancia. */
     public Producto registrarSalida(String codigo, int cantidad, String nota) {
+        sesion.requerir(Permiso.REGISTRAR_VENTAS);
         validarCantidad(cantidad);
         Producto producto = obtenerActivo(codigo);
         if (cantidad > producto.getStock()) {
@@ -216,6 +231,7 @@ public class InventarioServicio {
 
     /** Fija el stock a un valor contado físicamente; la cantidad registrada es la diferencia. */
     public Producto ajustarStock(String codigo, int nuevoStock, String nota) {
+        sesion.requerir(Permiso.AJUSTAR_STOCK);
         if (nuevoStock < 0) {
             throw new InventarioException("El stock no puede ser negativo.");
         }
@@ -364,6 +380,7 @@ public class InventarioServicio {
     private void registrarMovimiento(Producto producto, Cambio c) {
         LocalDateTime ahora = LocalDateTime.now(reloj).truncatedTo(ChronoUnit.SECONDS);
         movimientos.registrar(new Movimiento(ahora, producto.getCodigo(), c.tipo(), c.cantidad(),
-                producto.getStock(), c.nota(), c.precioUnitario(), c.costoUnitario(), c.proveedorId()));
+                producto.getStock(), c.nota(), c.precioUnitario(), c.costoUnitario(), c.proveedorId(),
+                sesion.nombreUsuario()));
     }
 }

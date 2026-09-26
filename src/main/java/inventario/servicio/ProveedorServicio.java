@@ -1,5 +1,6 @@
 package inventario.servicio;
 
+import inventario.modelo.Permiso;
 import inventario.modelo.Proveedor;
 import inventario.persistencia.ProveedorRepositorio;
 
@@ -10,18 +11,26 @@ import java.util.Locale;
 public class ProveedorServicio {
 
     private final ProveedorRepositorio proveedores;
+    private final Sesion sesion;
 
     public ProveedorServicio(ProveedorRepositorio proveedores) {
+        this(proveedores, Sesion.sinRestricciones());
+    }
+
+    public ProveedorServicio(ProveedorRepositorio proveedores, Sesion sesion) {
         this.proveedores = proveedores;
+        this.sesion = sesion;
     }
 
     public Proveedor registrar(String nombre, String documento, String telefono, String email) {
+        sesion.requerir(Permiso.GESTIONAR_PROVEEDORES);
         Proveedor nuevo = crearValidado(null, nombre, documento, telefono, email, true);
         validarNombreDisponible(nuevo.nombre(), null);
         return guardar(nuevo);
     }
 
     public Proveedor actualizar(long id, String nombre, String documento, String telefono, String email) {
+        sesion.requerir(Permiso.GESTIONAR_PROVEEDORES);
         Proveedor actual = obtener(id);
         Proveedor actualizado = crearValidado(id, nombre, documento, telefono, email, actual.activo());
         validarNombreDisponible(actualizado.nombre(), id);
@@ -29,10 +38,12 @@ public class ProveedorServicio {
     }
 
     public void darDeBaja(long id) {
+        sesion.requerir(Permiso.GESTIONAR_PROVEEDORES);
         guardar(obtener(id).conActivo(false));
     }
 
     public void reactivar(long id) {
+        sesion.requerir(Permiso.GESTIONAR_PROVEEDORES);
         guardar(obtener(id).conActivo(true));
     }
 
