@@ -1,0 +1,15 @@
+# Compilación
+out/
+target/
+*.class
+
+# Datos locales de la aplicación
+data/
+
+# IntelliJ (se versionan solo los archivos compartibles)
+.idea/workspace.xml
+.idea/shelf/
+.idea/usage.statistics.xml
+
+# Configuración local de Claude Code
+.claude/settings.local.json

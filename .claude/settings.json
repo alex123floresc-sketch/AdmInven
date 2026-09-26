@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(javac:*)",
+      "Bash(java:*)",
+      "Bash(./mvnw:*)",
+      "Bash(mvnw:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "PowerShell(javac:*)",
+      "PowerShell(java:*)",
+      "PowerShell(.\\mvnw.cmd:*)",
+      "PowerShell(git status:*)",
+      "PowerShell(git diff:*)",
+      "PowerShell(git log:*)",
+      "PowerShell(git add:*)"
+    ]
+  }
+}
