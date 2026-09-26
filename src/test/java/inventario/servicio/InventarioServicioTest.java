@@ -23,13 +23,15 @@ class InventarioServicioTest {
 
     private static final Clock RELOJ_FIJO = Clock.fixed(Instant.parse("2026-09-25T10:15:30Z"), ZoneOffset.UTC);
 
+    private ProductoRepositorioEnMemoria productos;
     private MovimientoRepositorioEnMemoria movimientos;
     private InventarioServicio servicio;
 
     @BeforeEach
     void preparar() {
+        productos = new ProductoRepositorioEnMemoria();
         movimientos = new MovimientoRepositorioEnMemoria();
-        servicio = new InventarioServicio(new ProductoRepositorioEnMemoria(), movimientos, RELOJ_FIJO);
+        servicio = new InventarioServicio(productos, movimientos, RELOJ_FIJO);
     }
 
     private Producto registrarArroz(int stock) {
@@ -209,6 +211,65 @@ class InventarioServicioTest {
         registrarArroz(20);
 
         assertThrows(InventarioException.class, () -> servicio.ajustarStock("ARR-01", -1, ""));
+    }
+
+    // ---- Coherencia ante fallos de guardado ----
+
+    @Test
+    void siFallaElMovimientoLaSalidaNoCambiaElStock() {
+        registrarArroz(20);
+        movimientos.fallarAlRegistrar = true;
+
+        InventarioException e = assertThrows(InventarioException.class,
+                () -> servicio.registrarSalida("ARR-01", 5, "Venta"));
+
+        assertEquals("No se pudo guardar el movimiento; el stock no se modificó.", e.getMessage());
+        assertEquals(20, servicio.obtener("ARR-01").getStock());
+        assertEquals(20, productos.buscarPorCodigo("ARR-01").orElseThrow().getStock());
+    }
+
+    @Test
+    void siFallaGuardarElProductoLaEntradaNoCambiaStockNiRegistraMovimiento() {
+        registrarArroz(20);
+        int movimientosAntes = movimientos.listar().size();
+        productos.fallarAlGuardar = true;
+
+        assertThrows(InventarioException.class, () -> servicio.registrarEntrada("ARR-01", 5, ""));
+
+        assertEquals(20, servicio.obtener("ARR-01").getStock());
+        assertEquals(movimientosAntes, movimientos.listar().size());
+    }
+
+    @Test
+    void siFallaElMovimientoElAjusteNoCambiaElStock() {
+        registrarArroz(20);
+        movimientos.fallarAlRegistrar = true;
+
+        assertThrows(InventarioException.class, () -> servicio.ajustarStock("ARR-01", 3, ""));
+
+        assertEquals(20, servicio.obtener("ARR-01").getStock());
+    }
+
+    @Test
+    void siFallaElMovimientoInicialElProductoNoQuedaRegistrado() {
+        movimientos.fallarAlRegistrar = true;
+
+        assertThrows(InventarioException.class, () -> registrarArroz(20));
+
+        assertFalse(servicio.existe("ARR-01"));
+    }
+
+    @Test
+    void siFallaGuardarLaEdicionElProductoConservaSusDatos() {
+        registrarArroz(20);
+        productos.fallarAlGuardar = true;
+
+        assertThrows(InventarioException.class,
+                () -> servicio.actualizarProducto("ARR-01", "Arroz extra", "Granos", BigDecimal.TEN, 1));
+
+        Producto p = servicio.obtener("ARR-01");
+        assertEquals("Arroz", p.getNombre());
+        assertEquals(new BigDecimal("4.50"), p.getPrecio());
     }
 
     // ---- Consultas ----

@@ -38,29 +38,35 @@ public class InventarioServicio {
         if (productos.buscarPorCodigo(producto.getCodigo()).isPresent()) {
             throw new InventarioException("Ya existe un producto con el código " + producto.getCodigo() + ".");
         }
-        productos.guardar(producto);
-        if (stockInicial > 0) {
-            registrarMovimiento(producto, TipoMovimiento.ENTRADA, stockInicial, "Stock inicial");
+        try {
+            productos.guardar(producto);
+            if (stockInicial > 0) {
+                registrarMovimiento(producto, TipoMovimiento.ENTRADA, stockInicial, "Stock inicial");
+            }
+        } catch (RuntimeException e) {
+            deshacer(e, () -> productos.eliminar(producto.getCodigo()));
+            throw new InventarioException("No se pudo registrar el producto; no se guardó ningún cambio.", e);
         }
         return producto;
     }
 
     public Producto actualizarProducto(String codigo, String nombre, String categoria,
                                        BigDecimal precio, int stockMinimo) {
-        Producto producto = obtener(codigo);
-        // Se valida sobre una copia para no dejar el producto a medio modificar si algo falla.
-        crearValidado(producto.getCodigo(), nombre, categoria, precio, producto.getStock(), stockMinimo);
-        producto.setNombre(nombre);
-        producto.setCategoria(categoria);
-        producto.setPrecio(precio);
-        producto.setStockMinimo(stockMinimo);
-        productos.guardar(producto);
-        return producto;
+        Producto actual = obtener(codigo);
+        // Se guarda una copia: si algo falla, el producto original queda intacto.
+        Producto actualizado = crearValidado(actual.getCodigo(), nombre, categoria, precio,
+                actual.getStock(), stockMinimo);
+        guardarProducto(actualizado);
+        return actualizado;
     }
 
     public void eliminarProducto(String codigo) {
         Producto producto = obtener(codigo);
-        productos.eliminar(producto.getCodigo());
+        try {
+            productos.eliminar(producto.getCodigo());
+        } catch (RuntimeException e) {
+            throw new InventarioException("No se pudo eliminar el producto: " + e.getMessage(), e);
+        }
     }
 
     public boolean existe(String codigo) {
@@ -101,10 +107,13 @@ public class InventarioServicio {
     public Producto registrarEntrada(String codigo, int cantidad, String nota) {
         validarCantidad(cantidad);
         Producto producto = obtener(codigo);
-        producto.setStock(Math.addExact(producto.getStock(), cantidad));
-        productos.guardar(producto);
-        registrarMovimiento(producto, TipoMovimiento.ENTRADA, cantidad, nota);
-        return producto;
+        int nuevoStock;
+        try {
+            nuevoStock = Math.addExact(producto.getStock(), cantidad);
+        } catch (ArithmeticException e) {
+            throw new InventarioException("La cantidad es demasiado grande.");
+        }
+        return cambiarStock(producto, nuevoStock, TipoMovimiento.ENTRADA, cantidad, nota);
     }
 
     public Producto registrarSalida(String codigo, int cantidad, String nota) {
@@ -114,10 +123,7 @@ public class InventarioServicio {
             throw new InventarioException("Stock insuficiente: hay " + producto.getStock()
                     + " unidades de " + producto.getNombre() + ".");
         }
-        producto.setStock(producto.getStock() - cantidad);
-        productos.guardar(producto);
-        registrarMovimiento(producto, TipoMovimiento.SALIDA, cantidad, nota);
-        return producto;
+        return cambiarStock(producto, producto.getStock() - cantidad, TipoMovimiento.SALIDA, cantidad, nota);
     }
 
     /** Fija el stock a un valor contado físicamente; la cantidad registrada es la diferencia. */
@@ -130,10 +136,7 @@ public class InventarioServicio {
         if (diferencia == 0) {
             return producto;
         }
-        producto.setStock(nuevoStock);
-        productos.guardar(producto);
-        registrarMovimiento(producto, TipoMovimiento.AJUSTE, diferencia, nota);
-        return producto;
+        return cambiarStock(producto, nuevoStock, TipoMovimiento.AJUSTE, diferencia, nota);
     }
 
     // ---- Consultas ----
@@ -178,6 +181,41 @@ public class InventarioServicio {
     private void validarCantidad(int cantidad) {
         if (cantidad <= 0) {
             throw new InventarioException("La cantidad debe ser mayor que cero.");
+        }
+    }
+
+    /**
+     * Aplica el nuevo stock y registra el movimiento como una sola operación:
+     * si cualquiera de los dos guardados falla, el stock vuelve a su valor anterior.
+     */
+    private Producto cambiarStock(Producto producto, int nuevoStock, TipoMovimiento tipo, int cantidad, String nota) {
+        int stockAnterior = producto.getStock();
+        producto.setStock(nuevoStock);
+        try {
+            productos.guardar(producto);
+            registrarMovimiento(producto, tipo, cantidad, nota);
+        } catch (RuntimeException e) {
+            producto.setStock(stockAnterior);
+            deshacer(e, () -> productos.guardar(producto));
+            throw new InventarioException("No se pudo guardar el movimiento; el stock no se modificó.", e);
+        }
+        return producto;
+    }
+
+    private void guardarProducto(Producto producto) {
+        try {
+            productos.guardar(producto);
+        } catch (RuntimeException e) {
+            throw new InventarioException("No se pudo guardar el producto: " + e.getMessage(), e);
+        }
+    }
+
+    /** Ejecuta una acción de reversión; si también falla, se adjunta al error original. */
+    private static void deshacer(RuntimeException original, Runnable reversion) {
+        try {
+            reversion.run();
+        } catch (RuntimeException e) {
+            original.addSuppressed(e);
         }
     }
 

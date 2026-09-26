@@ -37,6 +37,11 @@ public class MenuConsola {
                     continuar = ejecutar(opcion);
                 } catch (InventarioException e) {
                     salida.println("! " + e.getMessage());
+                } catch (NoSuchElementException fin) {
+                    throw fin;
+                } catch (RuntimeException e) {
+                    // Un fallo imprevisto (p. ej. de disco) no debe cerrar la aplicación.
+                    salida.println("! Error inesperado: " + e.getMessage());
                 }
             }
         } catch (NoSuchElementException fin) {

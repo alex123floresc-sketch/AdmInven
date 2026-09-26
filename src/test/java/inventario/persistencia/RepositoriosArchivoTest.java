@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,6 +70,25 @@ class RepositoriosArchivoTest {
         assertTrue(repo.eliminar("a1"));
         assertFalse(repo.eliminar("a1"));
         assertTrue(new ArchivoProductoRepositorio(archivo).listar().isEmpty());
+    }
+
+    @Test
+    void siNoSePuedeEscribirElArchivoLaMemoriaQuedaComoEstaba() throws IOException {
+        Path archivo = carpeta.resolve("productos.csv");
+        ArchivoProductoRepositorio repo = new ArchivoProductoRepositorio(archivo);
+        Producto original = new Producto("A1", "Arroz", "", BigDecimal.ONE, 1, 0);
+        repo.guardar(original);
+        // Una carpeta con contenido en lugar del archivo hace fallar la escritura.
+        Files.delete(archivo);
+        Files.createDirectories(archivo.resolve("bloqueo"));
+
+        assertThrows(UncheckedIOException.class,
+                () -> repo.guardar(new Producto("A1", "Cambiado", "", BigDecimal.TEN, 9, 0)));
+        assertThrows(UncheckedIOException.class,
+                () -> repo.guardar(new Producto("B2", "Nuevo", "", BigDecimal.ONE, 1, 0)));
+        assertThrows(UncheckedIOException.class, () -> repo.eliminar("A1"));
+
+        assertEquals(List.of(original), repo.listar());
     }
 
     @Test

@@ -4,6 +4,8 @@ import inventario.modelo.Movimiento;
 import inventario.modelo.Producto;
 import inventario.persistencia.MovimientoRepositorio;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,8 +14,14 @@ class MovimientoRepositorioEnMemoria implements MovimientoRepositorio {
 
     private final List<Movimiento> movimientos = new ArrayList<>();
 
+    /** Simula un disco que no se puede escribir. */
+    boolean fallarAlRegistrar;
+
     @Override
     public void registrar(Movimiento movimiento) {
+        if (fallarAlRegistrar) {
+            throw new UncheckedIOException(new IOException("Disco lleno"));
+        }
         movimientos.add(movimiento);
     }
 

@@ -34,17 +34,39 @@ public class ArchivoProductoRepositorio implements ProductoRepositorio {
 
     @Override
     public void guardar(Producto producto) {
-        productos.put(producto.getCodigo(), producto);
-        persistir();
+        Producto anterior = productos.put(producto.getCodigo(), producto);
+        try {
+            persistir();
+        } catch (RuntimeException e) {
+            restaurar(producto.getCodigo(), anterior);
+            throw e;
+        }
     }
 
     @Override
     public boolean eliminar(String codigo) {
-        boolean eliminado = productos.remove(Producto.normalizarCodigo(codigo)) != null;
-        if (eliminado) {
-            persistir();
+        String clave = Producto.normalizarCodigo(codigo);
+        Producto eliminado = productos.remove(clave);
+        if (eliminado == null) {
+            return false;
         }
-        return eliminado;
+        try {
+            persistir();
+        } catch (RuntimeException e) {
+            // Se pierde la posición original en el orden de inserción; no afecta a los listados, que se ordenan.
+            productos.put(clave, eliminado);
+            throw e;
+        }
+        return true;
+    }
+
+    /** Deja la memoria como estaba si el archivo no pudo actualizarse. */
+    private void restaurar(String codigo, Producto anterior) {
+        if (anterior == null) {
+            productos.remove(codigo);
+        } else {
+            productos.put(codigo, anterior);
+        }
     }
 
     private void cargar() {
