@@ -21,10 +21,12 @@ public class ArchivoMovimientoRepositorio implements MovimientoRepositorio {
         cargar();
     }
 
+    /** Añade solo la línea nueva al archivo, sin reescribir el historial existente. */
     @Override
     public void registrar(Movimiento movimiento) {
+        Archivos.agregarLinea(archivo, CABECERA, Csv.unir(movimiento.fecha(), movimiento.codigoProducto(),
+                movimiento.tipo(), movimiento.cantidad(), movimiento.stockResultante(), movimiento.nota()));
         movimientos.add(movimiento);
-        persistir();
     }
 
     @Override
@@ -55,15 +57,5 @@ public class ArchivoMovimientoRepositorio implements MovimientoRepositorio {
                     TipoMovimiento.valueOf(c.get(2)), Integer.parseInt(c.get(3)),
                     Integer.parseInt(c.get(4)), c.get(5)));
         }
-    }
-
-    private void persistir() {
-        List<String> lineas = new ArrayList<>(movimientos.size() + 1);
-        lineas.add(CABECERA);
-        for (Movimiento m : movimientos) {
-            lineas.add(Csv.unir(m.fecha(), m.codigoProducto(), m.tipo(),
-                    m.cantidad(), m.stockResultante(), m.nota()));
-        }
-        Archivos.escribirLineas(archivo, lineas);
     }
 }

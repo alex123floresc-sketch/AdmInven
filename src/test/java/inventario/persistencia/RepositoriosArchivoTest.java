@@ -89,6 +89,35 @@ class RepositoriosArchivoTest {
     }
 
     @Test
+    void registrarMovimientoAgregaAlFinalSinReescribirLoExistente() throws IOException {
+        Path archivo = carpeta.resolve("movimientos.csv");
+        // Las comillas innecesarias en "Compra" desaparecerían si el archivo se reescribiera.
+        String existente = "fecha;codigoProducto;tipo;cantidad;stockResultante;nota\n"
+                + "2026-09-25T10:00;A1;ENTRADA;5;5;\"Compra\"\n";
+        Files.writeString(archivo, existente);
+        ArchivoMovimientoRepositorio repo = new ArchivoMovimientoRepositorio(archivo);
+
+        repo.registrar(new Movimiento(LocalDateTime.of(2026, 9, 25, 11, 0), "A1", TipoMovimiento.SALIDA, 2, 3, "Venta"));
+
+        assertTrue(Files.readString(archivo).startsWith(existente));
+        List<Movimiento> recargados = new ArchivoMovimientoRepositorio(archivo).listar();
+        assertEquals(2, recargados.size());
+        assertEquals("Venta", recargados.get(1).nota());
+    }
+
+    @Test
+    void registrarMovimientoRespetaArchivoSinSaltoDeLineaFinal() throws IOException {
+        Path archivo = carpeta.resolve("movimientos.csv");
+        Files.writeString(archivo, "fecha;codigoProducto;tipo;cantidad;stockResultante;nota\n"
+                + "2026-09-25T10:00;A1;ENTRADA;5;5;");
+        ArchivoMovimientoRepositorio repo = new ArchivoMovimientoRepositorio(archivo);
+
+        repo.registrar(new Movimiento(LocalDateTime.of(2026, 9, 25, 11, 0), "A1", TipoMovimiento.SALIDA, 2, 3, ""));
+
+        assertEquals(2, new ArchivoMovimientoRepositorio(archivo).listar().size());
+    }
+
+    @Test
     void lineaIncompletaImpideCargar() throws IOException {
         // Comportamiento actual; la Fase 2 lo cambiará para saltar la línea con un aviso.
         Path archivo = carpeta.resolve("productos.csv");
