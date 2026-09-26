@@ -5,6 +5,7 @@ import inventario.modelo.Producto;
 import inventario.modelo.TipoMovimiento;
 import inventario.persistencia.MovimientoRepositorio;
 import inventario.persistencia.ProductoRepositorio;
+import inventario.persistencia.Transacciones;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -18,15 +19,23 @@ public class InventarioServicio {
 
     private final ProductoRepositorio productos;
     private final MovimientoRepositorio movimientos;
+    private final Transacciones transacciones;
     private final Clock reloj;
 
-    public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos) {
-        this(productos, movimientos, Clock.systemDefaultZone());
+    public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
+                              Transacciones transacciones) {
+        this(productos, movimientos, transacciones, Clock.systemDefaultZone());
     }
 
     public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos, Clock reloj) {
+        this(productos, movimientos, Transacciones.NINGUNA, reloj);
+    }
+
+    public InventarioServicio(ProductoRepositorio productos, MovimientoRepositorio movimientos,
+                              Transacciones transacciones, Clock reloj) {
         this.productos = productos;
         this.movimientos = movimientos;
+        this.transacciones = transacciones;
         this.reloj = reloj;
     }
 
@@ -37,11 +46,14 @@ public class InventarioServicio {
         Producto producto = crearValidado(codigo, nombre, categoria, precio, stockInicial, stockMinimo);
         validarCodigoDisponible(producto.getCodigo());
         try {
-            productos.guardar(producto);
-            if (stockInicial > 0) {
-                registrarMovimiento(producto, TipoMovimiento.ENTRADA, stockInicial, "Stock inicial");
-            }
+            transacciones.ejecutar(() -> {
+                productos.guardar(producto);
+                if (stockInicial > 0) {
+                    registrarMovimiento(producto, TipoMovimiento.ENTRADA, stockInicial, "Stock inicial");
+                }
+            });
         } catch (RuntimeException e) {
+            // Con base de datos la transacción ya se revirtió; con archivos hay que deshacer a mano.
             deshacer(e, () -> productos.eliminar(producto.getCodigo()));
             throw new InventarioException("No se pudo registrar el producto; no se guardó ningún cambio.", e);
         }
@@ -233,8 +245,10 @@ public class InventarioServicio {
         int stockAnterior = producto.getStock();
         producto.setStock(nuevoStock);
         try {
-            productos.guardar(producto);
-            registrarMovimiento(producto, tipo, cantidad, nota);
+            transacciones.ejecutar(() -> {
+                productos.guardar(producto);
+                registrarMovimiento(producto, tipo, cantidad, nota);
+            });
         } catch (RuntimeException e) {
             producto.setStock(stockAnterior);
             deshacer(e, () -> productos.guardar(producto));

@@ -9,7 +9,8 @@ Aplicación de consola en Java (JDK 26, proyecto Maven) para gestionar productos
 - Historial de movimientos por producto.
 - Alertas y listado de productos en o por debajo del stock mínimo.
 - Resumen: unidades totales, valor del inventario y últimos movimientos.
-- Persistencia automática en `data/productos.csv` y `data/movimientos.csv` (UTF-8, separador `;`).
+- Base de datos SQLite en `data/inventario.db`, con migraciones de esquema automáticas y transacciones.
+- Importación automática de los datos CSV de versiones anteriores (`data/productos.csv`, `data/movimientos.csv`).
 
 ## Estructura
 
@@ -17,7 +18,7 @@ Aplicación de consola en Java (JDK 26, proyecto Maven) para gestionar productos
 src/main/java/inventario/
 ├── Main.java                 Punto de entrada y armado de dependencias
 ├── modelo/                   Producto, Movimiento, TipoMovimiento
-├── persistencia/             Repositorios (interfaces + implementación en CSV)
+├── persistencia/             Repositorios: interfaces, CSV (importación) y sqlite/ (almacenamiento)
 ├── servicio/                 Reglas de negocio (InventarioServicio)
 └── ui/                       Menú de consola
 ```
@@ -38,5 +39,5 @@ Desde la terminal (en PowerShell usar `.\mvnw.cmd` en lugar de `./mvnw`):
 ./mvnw package               # generar el JAR en target/
 java -jar target/administrador-de-inventario-1.0-SNAPSHOT.jar            # usa la carpeta ./data
 java -jar target/administrador-de-inventario-1.0-SNAPSHOT.jar otra/ruta  # carpeta de datos alternativa
-./mvnw exec:java             # ejecutar sin generar el JAR
+./mvnw exec:exec             # ejecutar sin generar el JAR
 ```

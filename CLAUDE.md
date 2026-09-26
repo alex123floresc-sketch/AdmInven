@@ -9,7 +9,8 @@ siguiendo la guía del proyecto: https://claude.ai/code/artifact/1b885b59-d2be-4
 - Arquitectura por capas en `src/main/java/inventario/`: `modelo` → `persistencia` → `servicio` → `ui`.
   - La UI solo habla con `InventarioServicio`; el servicio solo con las interfaces de repositorio.
   - Las reglas de negocio van en el servicio y lanzan `InventarioException` con mensajes aptos para el usuario.
-  - Un nuevo almacenamiento = nueva implementación de `ProductoRepositorio` / `MovimientoRepositorio`.
+  - Almacenamiento: SQLite (`persistencia/sqlite`). Cambios de esquema = nuevo script `src/main/resources/db/V<n>.sql`, nunca editar uno existente.
+  - Operaciones que tocan varias tablas van dentro de `Transacciones.ejecutar`.
 - Dinero con `BigDecimal` (2 decimales), nunca `double`.
 - Los códigos de producto se normalizan con `Producto.normalizarCodigo` (mayúsculas, sin espacios laterales).
 
