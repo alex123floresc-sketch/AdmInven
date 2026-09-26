@@ -1,10 +1,14 @@
 package inventario.ui.fx;
 
+import inventario.Aplicacion;
 import inventario.modelo.Movimiento;
 import inventario.modelo.Producto;
 import inventario.modelo.TipoMovimiento;
 import inventario.servicio.InventarioException;
+import inventario.persistencia.LectorProductosCsv;
 import inventario.servicio.InventarioServicio;
+import inventario.servicio.ProveedorServicio;
+import inventario.servicio.ReporteServicio;
 import javafx.beans.binding.BooleanBinding;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -28,8 +32,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
+import java.io.File;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -41,6 +49,8 @@ final class PestanaProductos implements Seccion {
     private static final String TODAS = "Todas las categorías";
 
     private final InventarioServicio servicio;
+    private final ProveedorServicio proveedores;
+    private final ReporteServicio reportes;
     private final Runnable alCambiar;
     private final ObservableList<Producto> datos = FXCollections.observableArrayList();
     private final FilteredList<Producto> filtrados = new FilteredList<>(datos);
@@ -52,8 +62,10 @@ final class PestanaProductos implements Seccion {
     private final Button bajaOReactivar = new Button("Dar de baja");
     private final BorderPane vista = new BorderPane();
 
-    PestanaProductos(InventarioServicio servicio, Runnable alCambiar) {
-        this.servicio = servicio;
+    PestanaProductos(Aplicacion app, Runnable alCambiar) {
+        this.servicio = app.inventario();
+        this.proveedores = app.proveedores();
+        this.reportes = app.reportes();
         this.alCambiar = alCambiar;
         construirTabla();
         vista.setTop(construirBarra());
@@ -108,14 +120,19 @@ final class PestanaProductos implements Seccion {
                 .ifPresent(p -> cambioRealizado())));
         Button editar = new Button("Editar");
         editar.setOnAction(e -> editarSeleccionado());
-        Button entrada = new Button("Entrada");
+        Button entrada = new Button("Compra");
         entrada.setOnAction(e -> movimiento(TipoMovimiento.ENTRADA));
-        Button salida = new Button("Salida");
+        Button salida = new Button("Venta");
         salida.setOnAction(e -> movimiento(TipoMovimiento.SALIDA));
         Button ajustar = new Button("Ajustar");
         ajustar.setOnAction(e -> movimiento(TipoMovimiento.AJUSTE));
         Button historial = new Button("Historial");
         historial.setOnAction(e -> mostrarHistorial());
+        Button importar = new Button("Importar CSV");
+        importar.setOnAction(e -> importar());
+        importar.disableProperty().bind(verBajas.selectedProperty());
+        Button exportar = new Button("Exportar CSV");
+        exportar.setOnAction(e -> exportar());
         bajaOReactivar.getStyleClass().add("peligro");
         bajaOReactivar.setOnAction(e -> bajaOReactivar());
 
@@ -132,7 +149,7 @@ final class PestanaProductos implements Seccion {
         Region espacio = new Region();
         HBox.setHgrow(espacio, Priority.ALWAYS);
         HBox acciones = new HBox(8, nuevo, editar, separador(), entrada, salida, ajustar, separador(),
-                historial, espacio, bajaOReactivar);
+                historial, espacio, importar, exportar, separador(), bajaOReactivar);
         acciones.setAlignment(Pos.CENTER_LEFT);
 
         VBox barra = new VBox(12, filtros, acciones);
@@ -144,7 +161,9 @@ final class PestanaProductos implements Seccion {
         tabla.getColumns().add(Tablas.texto("Código", Producto::getCodigo, 90));
         tabla.getColumns().add(Tablas.texto("Nombre", Producto::getNombre, 240));
         tabla.getColumns().add(Tablas.texto("Categoría", Producto::getCategoria, 130));
-        tabla.getColumns().add(Tablas.numero("Precio", Producto::getPrecio, Formatos::numero, 90));
+        tabla.getColumns().add(Tablas.numero("Precio", Producto::getPrecio, Formatos::numero, 80));
+        tabla.getColumns().add(Tablas.numero("Costo", Producto::getCosto, Formatos::numero, 80));
+        tabla.getColumns().add(Tablas.numero("Margen", Producto::margenPorcentaje, m -> m + " %", 75));
         tabla.getColumns().add(Tablas.numero("Stock", Producto::getStock, Formatos::entero, 70));
         tabla.getColumns().add(Tablas.numero("Mínimo", Producto::getStockMinimo, Formatos::entero, 70));
         tabla.getColumns().add(Tablas.numero("Valor en stock", Producto::valorEnStock, Formatos::numero, 110));
@@ -199,7 +218,7 @@ final class PestanaProductos implements Seccion {
     private void movimiento(TipoMovimiento tipo) {
         Producto p = tabla.getSelectionModel().getSelectedItem();
         if (p != null) {
-            accion(() -> MovimientoDialogo.mostrar(ventana(), servicio, p, tipo).ifPresent(actualizado -> {
+            accion(() -> MovimientoDialogo.mostrar(ventana(), servicio, proveedores, p, tipo).ifPresent(actualizado -> {
                 cambioRealizado();
                 if (tipo == TipoMovimiento.SALIDA && actualizado.tieneStockBajo()) {
                     Dialogos.informacion(ventana(), "Stock bajo", actualizado.getNombre() + " quedó con "
@@ -244,6 +263,47 @@ final class PestanaProductos implements Seccion {
         dialogo.getDialogPane().getButtonTypes().add(Dialogos.CERRAR);
         dialogo.setResizable(true);
         dialogo.showAndWait();
+    }
+
+    private void importar() {
+        FileChooser selector = selectorCsv("Importar productos");
+        File archivo = selector.showOpenDialog(ventana());
+        if (archivo == null) {
+            return;
+        }
+        LectorProductosCsv.Resultado leido = LectorProductosCsv.leer(archivo.toPath());
+        InventarioServicio.ResultadoImportacion r = servicio.importarProductos(leido.productos());
+        List<String> avisos = new ArrayList<>(leido.advertencias());
+        avisos.addAll(r.omitidos());
+        StringBuilder mensaje = new StringBuilder(r.importados() + " producto(s) importado(s).");
+        if (!avisos.isEmpty()) {
+            mensaje.append("\n\nNo se importaron ").append(avisos.size()).append(":\n");
+            avisos.stream().limit(15).forEach(a -> mensaje.append("• ").append(a).append('\n'));
+            if (avisos.size() > 15) {
+                mensaje.append("… y ").append(avisos.size() - 15).append(" más.");
+            }
+        }
+        cambioRealizado();
+        Dialogos.informacion(ventana(), "Importación terminada", mensaje.toString());
+    }
+
+    private void exportar() {
+        FileChooser selector = selectorCsv("Exportar inventario");
+        selector.setInitialFileName("inventario-" + LocalDate.now() + ".csv");
+        File archivo = selector.showSaveDialog(ventana());
+        if (archivo != null) {
+            accion(() -> {
+                reportes.exportarInventario(archivo.toPath());
+                Dialogos.informacion(ventana(), "Exportación terminada", "Inventario guardado en:\n" + archivo);
+            });
+        }
+    }
+
+    private static FileChooser selectorCsv(String titulo) {
+        FileChooser selector = new FileChooser();
+        selector.setTitle(titulo);
+        selector.getExtensionFilters().add(new FileChooser.ExtensionFilter("Archivos CSV", "*.csv"));
+        return selector;
     }
 
     private void cambioRealizado() {

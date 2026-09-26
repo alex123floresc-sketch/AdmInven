@@ -1,6 +1,6 @@
 package inventario.ui.fx;
 
-import inventario.servicio.InventarioServicio;
+import inventario.Aplicacion;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -23,12 +23,14 @@ final class VentanaPrincipal {
     private final List<Seccion> secciones;
     private final TabPane pestanas = new TabPane();
 
-    VentanaPrincipal(Stage stage, InventarioServicio servicio, String ubicacionDatos) {
+    VentanaPrincipal(Stage stage, Aplicacion app, String ubicacionDatos) {
         this.stage = stage;
         secciones = List.of(
-                new PestanaResumen(servicio),
-                new PestanaProductos(servicio, this::refrescarTodo),
-                new PestanaMovimientos(servicio));
+                new PestanaResumen(app.inventario(), app.reportes()),
+                new PestanaProductos(app, this::refrescarTodo),
+                new PestanaMovimientos(app.inventario()),
+                new PestanaProveedores(app.proveedores(), this::refrescarTodo),
+                new PestanaReportes(app.reportes()));
 
         for (Seccion seccion : secciones) {
             Tab tab = new Tab(seccion.titulo(), seccion.vista());

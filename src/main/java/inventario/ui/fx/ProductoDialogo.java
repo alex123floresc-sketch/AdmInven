@@ -4,11 +4,13 @@ import inventario.modelo.Producto;
 import inventario.servicio.InventarioServicio;
 import javafx.application.Platform;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Window;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,6 +41,12 @@ final class ProductoDialogo {
         categoria.setPromptText("General");
         categoria.getEditor().setText(nuevo ? "" : actual.getCategoria());
         TextField precio = campo(nuevo ? "" : actual.getPrecio().toPlainString(), "0.00");
+        TextField costo = campo(nuevo ? "" : actual.getCosto().toPlainString(), "0.00");
+        Label margen = new Label();
+        margen.getStyleClass().add("texto-secundario");
+        precio.textProperty().addListener((o, a, n) -> mostrarMargen(precio, costo, margen));
+        costo.textProperty().addListener((o, a, n) -> mostrarMargen(precio, costo, margen));
+        mostrarMargen(precio, costo, margen);
         TextField stockInicial = campo("0", "0");
         TextField stockMinimo = campo(nuevo ? "0" : String.valueOf(actual.getStockMinimo()), "0");
 
@@ -46,7 +54,9 @@ final class ProductoDialogo {
         Dialogos.fila(rejilla, "Código", codigo);
         Dialogos.fila(rejilla, "Nombre", nombre);
         Dialogos.fila(rejilla, "Categoría", categoria);
-        Dialogos.fila(rejilla, "Precio (" + Formatos.MONEDA + ")", precio);
+        Dialogos.fila(rejilla, "Precio de venta (" + Formatos.MONEDA + ")", precio);
+        Dialogos.fila(rejilla, "Costo (" + Formatos.MONEDA + ")", costo);
+        Dialogos.fila(rejilla, "", margen);
         if (nuevo) {
             Dialogos.fila(rejilla, "Stock inicial", stockInicial);
         }
@@ -56,16 +66,34 @@ final class ProductoDialogo {
         return Dialogos.formulario(duenio, nuevo ? "Nuevo producto" : "Editar " + actual.getCodigo(),
                 "Guardar", rejilla, () -> {
                     BigDecimal valorPrecio = Formatos.leerDecimal("El precio", precio.getText());
+                    BigDecimal valorCosto = costo.getText().isBlank() ? BigDecimal.ZERO
+                            : Formatos.leerDecimal("El costo", costo.getText());
                     int minimo = Formatos.leerEntero("El stock mínimo", stockMinimo.getText());
                     String textoCategoria = categoria.getEditor().getText();
                     if (nuevo) {
                         int inicial = Formatos.leerEntero("El stock inicial", stockInicial.getText());
                         return servicio.registrarProducto(codigo.getText(), nombre.getText(), textoCategoria,
-                                valorPrecio, inicial, minimo);
+                                valorPrecio, valorCosto, inicial, minimo);
                     }
                     return servicio.actualizarProducto(actual.getCodigo(), nombre.getText(), textoCategoria,
-                            valorPrecio, minimo);
+                            valorPrecio, valorCosto, minimo);
                 });
+    }
+
+    /** Muestra el margen mientras se escribe, para detectar a tiempo un precio por debajo del costo. */
+    private static void mostrarMargen(TextField precio, TextField costo, Label margen) {
+        try {
+            BigDecimal p = new BigDecimal(precio.getText().strip().replace(',', '.'));
+            BigDecimal c = costo.getText().isBlank() ? BigDecimal.ZERO
+                    : new BigDecimal(costo.getText().strip().replace(',', '.'));
+            BigDecimal ganancia = p.subtract(c);
+            String porcentaje = p.signum() == 0 ? "—"
+                    : ganancia.multiply(BigDecimal.valueOf(100)).divide(p, 1, RoundingMode.HALF_UP) + " %";
+            margen.setText("Margen: " + Formatos.moneda(ganancia) + " por unidad (" + porcentaje + ")"
+                    + (ganancia.signum() < 0 ? "  — se vende a pérdida" : ""));
+        } catch (NumberFormatException e) {
+            margen.setText("Margen: —");
+        }
     }
 
     private static TextField campo(String valor, String ayuda) {

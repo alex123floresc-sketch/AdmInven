@@ -31,7 +31,7 @@ public class AppFx extends Application {
         Thread.currentThread().setUncaughtExceptionHandler((hilo, error) ->
                 Dialogos.error(stage, "Error inesperado: " + error.getMessage()));
 
-        new VentanaPrincipal(stage, aplicacion.inventario(), carpeta.toAbsolutePath().normalize().toString())
+        new VentanaPrincipal(stage, aplicacion, carpeta.toAbsolutePath().normalize().toString())
                 .mostrar();
         if (!aplicacion.avisos().isEmpty()) {
             Dialogos.informacion(stage, "Avisos al iniciar", String.join("\n", aplicacion.avisos()));

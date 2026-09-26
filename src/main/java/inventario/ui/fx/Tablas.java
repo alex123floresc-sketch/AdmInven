@@ -8,6 +8,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.function.Function;
 
@@ -77,6 +78,7 @@ final class Tablas {
         });
         tabla.getColumns().add(tipo);
         tabla.getColumns().add(numero("Cantidad", Tablas::cantidadConSigno, Tablas::conSigno, 80));
+        tabla.getColumns().add(numero("Importe", Tablas::importe, Formatos::numero, 90));
         tabla.getColumns().add(numero("Stock", Movimiento::stockResultante, Formatos::entero, 70));
         tabla.getColumns().add(texto("Nota", Movimiento::nota, 200));
         return tabla;
@@ -88,6 +90,11 @@ final class Tablas {
             case SALIDA -> "Salida";
             case AJUSTE -> "Ajuste";
         };
+    }
+
+    /** Ventas a precio de venta; compras y ajustes a costo. */
+    private static BigDecimal importe(Movimiento m) {
+        return m.tipo() == TipoMovimiento.SALIDA ? m.importeVenta() : m.importeCosto();
     }
 
     /** Las salidas se guardan en positivo; en pantalla se muestran restando. */

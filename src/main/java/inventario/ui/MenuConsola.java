@@ -98,10 +98,11 @@ public class MenuConsola {
         servicio.validarCodigoDisponible(codigo);
         String nombre = leerObligatorio("Nombre: ");
         String categoria = leerLinea("Categoría [General]: ");
-        BigDecimal precio = leerDecimal("Precio unitario: ", null);
+        BigDecimal precio = leerDecimal("Precio de venta: ", null);
+        BigDecimal costo = leerDecimal("Costo unitario [0]: ", BigDecimal.ZERO);
         int stock = leerEntero("Stock inicial: ", 0, null);
         int minimo = leerEntero("Stock mínimo: ", 0, null);
-        Producto p = servicio.registrarProducto(codigo, nombre, categoria, precio, stock, minimo);
+        Producto p = servicio.registrarProducto(codigo, nombre, categoria, precio, costo, stock, minimo);
         salida.println("Producto " + p.getCodigo() + " registrado.");
     }
 

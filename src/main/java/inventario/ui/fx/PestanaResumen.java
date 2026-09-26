@@ -3,6 +3,7 @@ package inventario.ui.fx;
 import inventario.modelo.Movimiento;
 import inventario.modelo.Producto;
 import inventario.servicio.InventarioServicio;
+import inventario.servicio.ReporteServicio;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -12,6 +13,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +22,11 @@ import java.util.Map;
 final class PestanaResumen implements Seccion {
 
     private final InventarioServicio servicio;
+    private final ReporteServicio reportes;
     private final Label productos = new Label();
     private final Label unidades = new Label();
     private final Label valor = new Label();
+    private final Label ventasHoy = new Label();
     private final Label stockBajo = new Label();
     private final VBox tarjetaStockBajo;
     private final TableView<Producto> reponer = Tablas.nueva("Todos los productos tienen stock suficiente.");
@@ -30,11 +34,13 @@ final class PestanaResumen implements Seccion {
     private final TableView<Movimiento> recientes;
     private final ScrollPane vista;
 
-    PestanaResumen(InventarioServicio servicio) {
+    PestanaResumen(InventarioServicio servicio, ReporteServicio reportes) {
         this.servicio = servicio;
-        tarjetaStockBajo = tarjeta("Con stock bajo", stockBajo);
-        HBox tarjetas = new HBox(16, tarjeta("Productos activos", productos), tarjeta("Unidades en stock", unidades),
-                tarjeta("Valor del inventario", valor), tarjetaStockBajo);
+        this.reportes = reportes;
+        tarjetaStockBajo = Componentes.tarjeta("Con stock bajo", stockBajo);
+        HBox tarjetas = new HBox(16, Componentes.tarjeta("Productos activos", productos),
+                Componentes.tarjeta("Unidades en stock", unidades), Componentes.tarjeta("Inventario al costo", valor), Componentes.tarjeta("Ventas de hoy", ventasHoy),
+                tarjetaStockBajo);
         tarjetas.getChildren().forEach(t -> HBox.setHgrow(t, Priority.ALWAYS));
 
         reponer.getColumns().add(Tablas.texto("Código", Producto::getCodigo, 80));
@@ -45,8 +51,8 @@ final class PestanaResumen implements Seccion {
         // En el resumen basta con el nombre del producto; el código solo quita espacio.
         recientes.getColumns().removeIf(c -> c.getText().equals("Código"));
 
-        VBox panelReponer = panel("Para reponer", reponer);
-        VBox panelRecientes = panel("Últimos movimientos", recientes);
+        VBox panelReponer = Componentes.panel("Para reponer", reponer);
+        VBox panelRecientes = Componentes.panel("Últimos movimientos", recientes);
         HBox.setHgrow(panelReponer, Priority.ALWAYS);
         HBox.setHgrow(panelRecientes, Priority.ALWAYS);
         panelReponer.setPrefWidth(380);
@@ -82,7 +88,9 @@ final class PestanaResumen implements Seccion {
 
         productos.setText(Formatos.entero(activos.size()));
         unidades.setText(Formatos.entero(servicio.unidadesTotales()));
-        valor.setText(Formatos.moneda(servicio.valorTotalInventario()));
+        valor.setText(Formatos.moneda(servicio.valorInventarioAlCosto()));
+        LocalDate hoy = LocalDate.now();
+        ventasHoy.setText(Formatos.moneda(reportes.ventas(hoy, hoy).ingresos()));
         stockBajo.setText(Formatos.entero(bajos.size()));
         tarjetaStockBajo.getStyleClass().remove("tarjeta-alerta");
         if (!bajos.isEmpty()) {
@@ -92,22 +100,5 @@ final class PestanaResumen implements Seccion {
         recientes.getItems().setAll(servicio.ultimosMovimientos(15));
     }
 
-    private static VBox tarjeta(String titulo, Label valor) {
-        Label etiqueta = new Label(titulo);
-        etiqueta.getStyleClass().add("tarjeta-titulo");
-        valor.getStyleClass().add("tarjeta-valor");
-        VBox tarjeta = new VBox(6, etiqueta, valor);
-        tarjeta.getStyleClass().add("tarjeta");
-        tarjeta.setMinWidth(160);
-        return tarjeta;
-    }
 
-    private static VBox panel(String titulo, Node contenido) {
-        Label etiqueta = new Label(titulo);
-        etiqueta.getStyleClass().add("titulo-panel");
-        VBox.setVgrow(contenido, Priority.ALWAYS);
-        VBox panel = new VBox(8, etiqueta, contenido);
-        panel.getStyleClass().add("panel");
-        return panel;
-    }
 }

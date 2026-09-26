@@ -239,3 +239,69 @@
 .dialog-pane > .button-bar > .container {
     -fx-padding: 8 0 0 0;
 }
+
+/* Subpestañas (dentro de Reportes) */
+.subpestanas > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+.subpestanas > .tab-header-area {
+    -fx-padding: 0;
+}
+
+/* Gráficos: serie 1 azul, serie 2 naranja (paleta categórica validada); cuadrícula tenue. */
+.grafico {
+    -fx-padding: 0;
+    -color-serie-1: #2a78d6;
+    -color-serie-2: #eb6834;
+}
+.grafico .chart-plot-background {
+    -fx-background-color: transparent;
+}
+.grafico .chart-horizontal-grid-lines,
+.grafico .chart-vertical-grid-lines {
+    -fx-stroke: #eceef2;
+}
+.grafico .chart-alternative-row-fill,
+.grafico .chart-alternative-column-fill {
+    -fx-fill: transparent;
+}
+.grafico .axis {
+    -fx-tick-label-fill: -color-texto-suave;
+    -fx-tick-label-font-size: 11px;
+}
+.grafico .axis-tick-mark, .grafico .axis-minor-tick-mark {
+    -fx-stroke: transparent;
+}
+.grafico .default-color0.chart-series-line {
+    -fx-stroke: -color-serie-1;
+    -fx-stroke-width: 2px;
+}
+.grafico .default-color1.chart-series-line {
+    -fx-stroke: -color-serie-2;
+    -fx-stroke-width: 2px;
+}
+.grafico .default-color0.chart-line-symbol {
+    -fx-background-color: -color-serie-1, white;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 5px;
+    -fx-padding: 4px;
+}
+.grafico .default-color1.chart-line-symbol {
+    -fx-background-color: -color-serie-2, white;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 5px;
+    -fx-padding: 4px;
+}
+.grafico .default-color0.chart-bar {
+    -fx-bar-fill: -color-serie-1;
+    -fx-background-radius: 0 4 4 0;
+}
+.grafico .chart-legend {
+    -fx-background-color: transparent;
+}
+.grafico .chart-legend-item {
+    -fx-text-fill: -color-texto;
+}
+.grafico .chart-content {
+    -fx-padding: 6 14 6 6;
+}
