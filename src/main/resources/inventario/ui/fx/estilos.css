@@ -329,3 +329,12 @@
     -fx-background-radius: 6;
     -fx-padding: 8 10 8 10;
 }
+.fondo-acceso {
+    -fx-background-color: linear-gradient(to bottom right, #17233b, #2458d6);
+}
+.tarjeta-acceso {
+    -fx-background-color: -color-superficie;
+    -fx-background-radius: 12;
+    -fx-padding: 28 32 28 32;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 24, 0, 0, 6);
+}

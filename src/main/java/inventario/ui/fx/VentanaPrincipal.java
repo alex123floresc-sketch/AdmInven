@@ -8,7 +8,6 @@ import inventario.servicio.Sesion;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -69,12 +68,7 @@ final class VentanaPrincipal {
         raiz.setCenter(pestanas);
         raiz.getStyleClass().add("raiz");
 
-        Scene escena = new Scene(raiz, 1180, 720);
-        escena.getStylesheets().add(AppFx.ESTILOS);
-        stage.setScene(escena);
-        stage.setTitle("Administrador de Inventario");
-        stage.setMinWidth(900);
-        stage.setMinHeight(560);
+        AppFx.mostrarEn(stage, raiz);
     }
 
     void mostrar() {

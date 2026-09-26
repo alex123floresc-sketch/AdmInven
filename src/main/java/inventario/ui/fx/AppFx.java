@@ -2,13 +2,13 @@ package inventario.ui.fx;
 
 import inventario.Aplicacion;
 import inventario.Opciones;
-import inventario.modelo.Usuario;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.util.Objects;
-import java.util.Optional;
 
 /** Aplicación JavaFX. Se lanza desde {@link inventario.Main} con los mismos argumentos ({@link Opciones}). */
 public class AppFx extends Application {
@@ -32,27 +32,34 @@ public class AppFx extends Application {
         }
         Thread.currentThread().setUncaughtExceptionHandler((hilo, error) ->
                 Dialogos.error(stage, "Error inesperado: " + error.getMessage()));
-        // Al cerrar sesión la ventana se oculta un momento: la aplicación termina solo si el usuario la cierra.
-        Platform.setImplicitExit(false);
-        stage.setOnCloseRequest(e -> Platform.exit());
 
+        stage.setTitle("Administrador de Inventario");
+        stage.setMinWidth(900);
+        stage.setMinHeight(560);
+        mostrarAcceso(stage);
+        stage.show();
         if (!aplicacion.avisos().isEmpty()) {
-            Dialogos.informacion(null, "Avisos al iniciar", String.join("\n", aplicacion.avisos()));
+            Dialogos.informacion(stage, "Avisos al iniciar", String.join("\n", aplicacion.avisos()));
         }
-        acceder(stage);
     }
 
-    /** Pide identificarse y abre la ventana principal; al cerrar sesión se vuelve aquí. */
-    private void acceder(Stage stage) {
-        stage.hide();
-        Optional<Usuario> usuario = aplicacion.usuarios().requiereConfiguracionInicial()
-                ? AccesoDialogo.configuracionInicial(null, aplicacion.usuarios())
-                : AccesoDialogo.iniciarSesion(null, aplicacion.usuarios(), aplicacion.esDemo());
-        if (usuario.isEmpty()) {
-            Platform.exit();
-            return;
+    /** La misma ventana muestra el acceso y, tras identificarse, el trabajo; al cerrar sesión vuelve aquí. */
+    private void mostrarAcceso(Stage stage) {
+        PantallaAcceso acceso = new PantallaAcceso(aplicacion.usuarios(), aplicacion.esDemo(),
+                usuario -> new VentanaPrincipal(stage, aplicacion, ubicacionDatos, () -> mostrarAcceso(stage))
+                        .mostrar());
+        mostrarEn(stage, acceso.vista());
+    }
+
+    /** Cambia el contenido de la ventana conservando su tamaño (o si está maximizada). */
+    static void mostrarEn(Stage stage, Parent contenido) {
+        if (stage.getScene() == null) {
+            Scene escena = new Scene(contenido, 1180, 720);
+            escena.getStylesheets().add(ESTILOS);
+            stage.setScene(escena);
+        } else {
+            stage.getScene().setRoot(contenido);
         }
-        new VentanaPrincipal(stage, aplicacion, ubicacionDatos, () -> acceder(stage)).mostrar();
     }
 
     @Override

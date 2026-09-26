@@ -7,6 +7,8 @@ import javafx.application.Application;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Punto de entrada: {@code [--consola] [--demo] [carpeta-de-datos]} (ver {@link Opciones}).
@@ -16,11 +18,19 @@ import java.util.Scanner;
  */
 public class Main {
 
+    /**
+     * Registro de JavaFX. Se guarda en un campo para que no se descarte su configuración: JavaFX avisa
+     * "Unsupported JavaFX configuration" al cargarse desde el classpath (lo normal en un JAR ejecutable),
+     * un aviso que no afecta en nada al funcionamiento.
+     */
+    private static final Logger REGISTRO_JAVAFX = Logger.getLogger("javafx");
+
     public static void main(String[] args) {
         Opciones opciones = Opciones.de(List.of(args));
         if (opciones.consola()) {
             ejecutarConsola(opciones);
         } else {
+            REGISTRO_JAVAFX.setLevel(Level.SEVERE);
             Application.launch(AppFx.class, args);
         }
     }

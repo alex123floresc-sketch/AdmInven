@@ -45,8 +45,11 @@ java -jar target/administrador-de-inventario-1.0-SNAPSHOT.jar otra/ruta   # carp
 ./mvnw test                                                               # solo las pruebas
 ```
 
-En PowerShell se usa `.\mvnw.cmd` en lugar de `./mvnw`. Desde IntelliJ: abrir la carpeta (se importa como
-proyecto Maven) y ejecutar `inventario.Main`; los argumentos se ponen en la configuración de ejecución.
+En PowerShell se usa `.\mvnw.cmd` en lugar de `./mvnw`.
+
+Desde IntelliJ: abrir la carpeta (se importa como proyecto Maven) y elegir arriba a la derecha una de las
+configuraciones incluidas: **Inventario (demo)**, **Inventario** o **Inventario (consola)**. Ya traen la opción
+de JVM `--enable-native-access=ALL-UNNAMED`, que evita los avisos de Java 26 al cargar JavaFX y SQLite.
 
 - **Modo demostración (`--demo`):** crea un minimarket con 16 productos, 4 proveedores y 60 días de
   movimientos. Usuarios: `admin` / `admin123` y `vendedor` / `vendedor123`.
