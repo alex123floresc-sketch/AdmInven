@@ -31,7 +31,11 @@ public class Main {
             // Usa la codificación real de la consola para leer bien tildes y eñes en Windows.
             Charset codificacion = Charset.forName(
                     System.getProperty("stdin.encoding", Charset.defaultCharset().name()));
-            new MenuConsola(app.inventario(), new Scanner(System.in, codificacion), System.out).iniciar();
+            if (app.esDemo()) {
+                System.out.println("Usuarios de demostración: " + Aplicacion.CREDENCIALES_DEMO);
+            }
+            new MenuConsola(app.inventario(), app.usuarios(), new Scanner(System.in, codificacion), System.out)
+                    .iniciar();
         }
     }
 }

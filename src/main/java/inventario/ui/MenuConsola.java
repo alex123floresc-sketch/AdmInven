@@ -2,9 +2,12 @@ package inventario.ui;
 
 import inventario.modelo.Movimiento;
 import inventario.modelo.Producto;
+import inventario.modelo.Usuario;
 import inventario.servicio.InventarioException;
 import inventario.servicio.InventarioServicio;
+import inventario.servicio.UsuarioServicio;
 
+import java.io.Console;
 import java.io.PrintStream;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
@@ -16,12 +19,16 @@ public class MenuConsola {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
+    private static final int INTENTOS_DE_ACCESO = 3;
+
     private final InventarioServicio servicio;
+    private final UsuarioServicio usuarios;
     private final Scanner entrada;
     private final PrintStream salida;
 
-    public MenuConsola(InventarioServicio servicio, Scanner entrada, PrintStream salida) {
+    public MenuConsola(InventarioServicio servicio, UsuarioServicio usuarios, Scanner entrada, PrintStream salida) {
         this.servicio = servicio;
+        this.usuarios = usuarios;
         this.entrada = entrada;
         this.salida = salida;
     }
@@ -29,6 +36,10 @@ public class MenuConsola {
     public void iniciar() {
         salida.println("=== Administrador de Inventario ===");
         try {
+            if (!identificarse()) {
+                salida.println("Demasiados intentos fallidos.");
+                return;
+            }
             boolean continuar = true;
             while (continuar) {
                 mostrarMenu();
@@ -50,8 +61,51 @@ public class MenuConsola {
         salida.println("Hasta luego.");
     }
 
+    /** Inicia sesión, o crea el administrador si es la primera vez. Devuelve false si no lo logra. */
+    private boolean identificarse() {
+        if (usuarios.requiereConfiguracionInicial()) {
+            salida.println("Primera ejecución: cree el usuario administrador.");
+            while (true) {
+                try {
+                    String usuario = leerObligatorio("Usuario: ");
+                    String nombre = leerObligatorio("Nombre completo: ");
+                    usuarios.crearAdministradorInicial(usuario, nombre, leerContrasena("Contraseña: "));
+                    salida.println("Administrador creado.");
+                    return true;
+                } catch (InventarioException e) {
+                    salida.println("! " + e.getMessage());
+                }
+            }
+        }
+        for (int intento = 1; intento <= INTENTOS_DE_ACCESO; intento++) {
+            try {
+                String usuario = leerObligatorio("Usuario: ");
+                Usuario u = usuarios.iniciarSesion(usuario, leerContrasena("Contraseña: "));
+                salida.println("Bienvenido(a), " + u.nombreCompleto() + " (" + u.rol() + ").");
+                return true;
+            } catch (InventarioException e) {
+                salida.println("! " + e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    /** En una terminal real la contraseña no se muestra al escribirla. */
+    private char[] leerContrasena(String mensaje) {
+        Console consola = System.console();
+        if (consola != null && consola.isTerminal()) {
+            char[] leida = consola.readPassword(mensaje);
+            if (leida == null) {
+                throw new NoSuchElementException();
+            }
+            return leida;
+        }
+        return leerLinea(mensaje).toCharArray();
+    }
+
     private void mostrarMenu() {
         salida.println();
+        salida.println("[" + usuarios.sesion().nombreUsuario() + "]");
         salida.println(" 1. Listar productos");
         salida.println(" 2. Buscar productos");
         salida.println(" 3. Registrar producto");

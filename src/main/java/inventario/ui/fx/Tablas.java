@@ -80,6 +80,7 @@ final class Tablas {
         tabla.getColumns().add(numero("Cantidad", Tablas::cantidadConSigno, Tablas::conSigno, 80));
         tabla.getColumns().add(numero("Importe", Tablas::importe, Formatos::numero, 90));
         tabla.getColumns().add(numero("Stock", Movimiento::stockResultante, Formatos::entero, 70));
+        tabla.getColumns().add(texto("Usuario", Movimiento::usuario, 90));
         tabla.getColumns().add(texto("Nota", Movimiento::nota, 200));
         return tabla;
     }

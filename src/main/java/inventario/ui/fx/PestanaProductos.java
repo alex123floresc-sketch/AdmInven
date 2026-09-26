@@ -2,6 +2,7 @@ package inventario.ui.fx;
 
 import inventario.Aplicacion;
 import inventario.modelo.Movimiento;
+import inventario.modelo.Permiso;
 import inventario.modelo.Producto;
 import inventario.modelo.TipoMovimiento;
 import inventario.servicio.InventarioException;
@@ -9,6 +10,7 @@ import inventario.persistencia.LectorProductosCsv;
 import inventario.servicio.InventarioServicio;
 import inventario.servicio.ProveedorServicio;
 import inventario.servicio.ReporteServicio;
+import inventario.servicio.Sesion;
 import javafx.beans.binding.BooleanBinding;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -51,6 +53,7 @@ final class PestanaProductos implements Seccion {
     private final InventarioServicio servicio;
     private final ProveedorServicio proveedores;
     private final ReporteServicio reportes;
+    private final Sesion sesion;
     private final Runnable alCambiar;
     private final ObservableList<Producto> datos = FXCollections.observableArrayList();
     private final FilteredList<Producto> filtrados = new FilteredList<>(datos);
@@ -66,6 +69,7 @@ final class PestanaProductos implements Seccion {
         this.servicio = app.inventario();
         this.proveedores = app.proveedores();
         this.reportes = app.reportes();
+        this.sesion = app.sesion();
         this.alCambiar = alCambiar;
         construirTabla();
         vista.setTop(construirBarra());
@@ -146,10 +150,21 @@ final class PestanaProductos implements Seccion {
         bajaOReactivar.disableProperty().bind(sinSeleccion);
         nuevo.disableProperty().bind(verBajas.selectedProperty());
 
+        Node separadorCatalogo = separador();
+        Node separadorStock = separador();
+        Node separadorBaja = separador();
+        // Cada usuario ve solo las acciones que su rol permite (el servicio igual las verifica).
+        segunPermiso(Permiso.GESTIONAR_PRODUCTOS, nuevo, editar, separadorCatalogo, importar, separadorBaja,
+                bajaOReactivar, verBajas);
+        segunPermiso(Permiso.REGISTRAR_COMPRAS, entrada);
+        segunPermiso(Permiso.REGISTRAR_VENTAS, salida);
+        segunPermiso(Permiso.AJUSTAR_STOCK, ajustar, separadorStock);
+        segunPermiso(Permiso.VER_REPORTES, exportar);
+
         Region espacio = new Region();
         HBox.setHgrow(espacio, Priority.ALWAYS);
-        HBox acciones = new HBox(8, nuevo, editar, separador(), entrada, salida, ajustar, separador(),
-                historial, espacio, importar, exportar, separador(), bajaOReactivar);
+        HBox acciones = new HBox(8, nuevo, editar, separadorCatalogo, entrada, salida, ajustar, separadorStock,
+                historial, espacio, importar, exportar, separadorBaja, bajaOReactivar);
         acciones.setAlignment(Pos.CENTER_LEFT);
 
         VBox barra = new VBox(12, filtros, acciones);
@@ -162,8 +177,10 @@ final class PestanaProductos implements Seccion {
         tabla.getColumns().add(Tablas.texto("Nombre", Producto::getNombre, 240));
         tabla.getColumns().add(Tablas.texto("Categoría", Producto::getCategoria, 130));
         tabla.getColumns().add(Tablas.numero("Precio", Producto::getPrecio, Formatos::numero, 80));
-        tabla.getColumns().add(Tablas.numero("Costo", Producto::getCosto, Formatos::numero, 80));
-        tabla.getColumns().add(Tablas.numero("Margen", Producto::margenPorcentaje, m -> m + " %", 75));
+        if (sesion.puede(Permiso.VER_REPORTES)) {
+            tabla.getColumns().add(Tablas.numero("Costo", Producto::getCosto, Formatos::numero, 80));
+            tabla.getColumns().add(Tablas.numero("Margen", Producto::margenPorcentaje, m -> m + " %", 75));
+        }
         tabla.getColumns().add(Tablas.numero("Stock", Producto::getStock, Formatos::entero, 70));
         tabla.getColumns().add(Tablas.numero("Mínimo", Producto::getStockMinimo, Formatos::entero, 70));
         tabla.getColumns().add(Tablas.numero("Valor en stock", Producto::valorEnStock, Formatos::numero, 110));
@@ -182,7 +199,7 @@ final class PestanaProductos implements Seccion {
             };
             fila.setOnMouseClicked(e -> {
                 if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2 && !fila.isEmpty()
-                        && !verBajas.isSelected()) {
+                        && !verBajas.isSelected() && sesion.puede(Permiso.GESTIONAR_PRODUCTOS)) {
                     editarSeleccionado();
                 }
             });
@@ -320,6 +337,14 @@ final class PestanaProductos implements Seccion {
 
     private Window ventana() {
         return vista.getScene().getWindow();
+    }
+
+    private void segunPermiso(Permiso permiso, Node... nodos) {
+        boolean puede = sesion.puede(permiso);
+        for (Node nodo : nodos) {
+            nodo.setVisible(puede);
+            nodo.setManaged(puede);
+        }
     }
 
     private static Node separador() {
