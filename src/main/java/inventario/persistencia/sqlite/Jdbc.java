@@ -68,6 +68,12 @@ final class Jdbc {
         return consultar(conexion, sql, mapeo, parametros).stream().findFirst();
     }
 
+    /** Lee una columna entera que admite NULL (el driver de SQLite no convierte NULL con getObject). */
+    static Long enteroONulo(ResultSet rs, String columna) throws SQLException {
+        long valor = rs.getLong(columna);
+        return rs.wasNull() ? null : valor;
+    }
+
     static LocalDateTime fecha(String texto) {
         return LocalDateTime.parse(texto);
     }

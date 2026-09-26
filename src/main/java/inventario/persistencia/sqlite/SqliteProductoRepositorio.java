@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public class SqliteProductoRepositorio implements ProductoRepositorio {
 
-    private static final String COLUMNAS = "codigo, nombre, categoria, precio, stock, stock_minimo, activo";
+    private static final String COLUMNAS = "codigo, nombre, categoria, precio, costo, stock, stock_minimo, activo";
 
     private final BaseDeDatos bd;
 
@@ -34,13 +34,13 @@ public class SqliteProductoRepositorio implements ProductoRepositorio {
     @Override
     public void guardar(Producto p) {
         Jdbc.actualizar(bd.conexion(), """
-                        INSERT INTO producto (%s) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO producto (%s) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT (codigo) DO UPDATE SET
-                            nombre = excluded.nombre, categoria = excluded.categoria, precio = excluded.precio,
-                            stock = excluded.stock, stock_minimo = excluded.stock_minimo, activo = excluded.activo
+                            nombre = excluded.nombre, categoria = excluded.categoria,
+                            precio = excluded.precio, costo = excluded.costo, stock = excluded.stock, stock_minimo = excluded.stock_minimo, activo = excluded.activo
                         """.formatted(COLUMNAS),
-                p.getCodigo(), p.getNombre(), p.getCategoria(), p.getPrecio(), p.getStock(), p.getStockMinimo(),
-                p.isActivo());
+                p.getCodigo(), p.getNombre(), p.getCategoria(), p.getPrecio(), p.getCosto(), p.getStock(),
+                p.getStockMinimo(), p.isActivo());
     }
 
     @Override
@@ -51,7 +51,8 @@ public class SqliteProductoRepositorio implements ProductoRepositorio {
 
     private static Producto mapear(ResultSet rs) throws SQLException {
         Producto p = new Producto(rs.getString("codigo"), rs.getString("nombre"), rs.getString("categoria"),
-                new BigDecimal(rs.getString("precio")), rs.getInt("stock"), rs.getInt("stock_minimo"));
+                new BigDecimal(rs.getString("precio")), new BigDecimal(rs.getString("costo")), rs.getInt("stock"),
+                rs.getInt("stock_minimo"));
         p.setActivo(rs.getInt("activo") == 1);
         return p;
     }

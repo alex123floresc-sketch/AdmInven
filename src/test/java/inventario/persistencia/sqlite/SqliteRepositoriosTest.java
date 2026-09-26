@@ -2,6 +2,7 @@ package inventario.persistencia.sqlite;
 
 import inventario.modelo.Movimiento;
 import inventario.modelo.Producto;
+import inventario.modelo.Proveedor;
 import inventario.modelo.TipoMovimiento;
 import inventario.persistencia.PersistenciaException;
 import org.junit.jupiter.api.AfterEach;
@@ -91,6 +92,34 @@ class SqliteRepositoriosTest {
 
         assertEquals(List.of(m1, m2, m3), movimientos.listar());
         assertEquals(List.of(m1, m3), movimientos.listarPorProducto("a1"));
+    }
+
+    @Test
+    void costoYDatosEconomicosDelMovimientoSeConservan() {
+        productos.guardar(new Producto("A1", "Arroz", "", new BigDecimal("5"), new BigDecimal("3.755"), 0, 0));
+        SqliteProveedorRepositorio proveedores = new SqliteProveedorRepositorio(bd);
+        long andina = proveedores.guardar(new Proveedor(null, "Andina", "20512345678", "", "", true)).id();
+        Movimiento compra = new Movimiento(LocalDateTime.of(2026, 9, 25, 9, 0), "A1", TipoMovimiento.ENTRADA, 10, 10,
+                "Factura 001", BigDecimal.ZERO, new BigDecimal("3.70"), andina);
+
+        movimientos.registrar(compra);
+
+        assertEquals(new BigDecimal("3.76"), productos.buscarPorCodigo("A1").orElseThrow().getCosto());
+        assertEquals(List.of(compra), movimientos.listar());
+    }
+
+    @Test
+    void proveedoresSeInsertanActualizanYNoRepitenNombre() {
+        SqliteProveedorRepositorio proveedores = new SqliteProveedorRepositorio(bd);
+        Proveedor andina = proveedores.guardar(new Proveedor(null, "Andina", "", "", "", true));
+        proveedores.guardar(new Proveedor(null, "Bebidas", "", "", "", true));
+
+        proveedores.guardar(new Proveedor(andina.id(), "Andina SAC", "", "999", "", false));
+
+        assertEquals(List.of("Andina SAC", "Bebidas"), proveedores.listar().stream().map(Proveedor::nombre).toList());
+        assertFalse(proveedores.buscarPorId(andina.id()).orElseThrow().activo());
+        assertThrows(PersistenciaException.class,
+                () -> proveedores.guardar(new Proveedor(null, "bebidas", "", "", "", true)));
     }
 
     @Test
