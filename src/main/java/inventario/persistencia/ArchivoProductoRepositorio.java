@@ -16,6 +16,7 @@ public class ArchivoProductoRepositorio implements ProductoRepositorio {
 
     private final Path archivo;
     private final Map<String, Producto> productos = new LinkedHashMap<>();
+    private final List<String> advertencias = new ArrayList<>();
 
     public ArchivoProductoRepositorio(Path archivo) {
         this.archivo = archivo;
@@ -69,22 +70,22 @@ public class ArchivoProductoRepositorio implements ProductoRepositorio {
         }
     }
 
+    /** Avisos sobre líneas del archivo que no se pudieron cargar. */
+    public List<String> getAdvertencias() {
+        return List.copyOf(advertencias);
+    }
+
     private void cargar() {
-        List<String> lineas = Archivos.leerLineas(archivo);
-        for (int i = 1; i < lineas.size(); i++) {
-            String linea = lineas.get(i);
-            if (linea.isBlank()) {
-                continue;
-            }
-            List<String> c = Csv.separar(linea);
-            if (c.size() < 6) {
-                throw new IllegalStateException("Línea " + (i + 1) + " inválida en " + archivo);
-            }
+        Archivos.leerRegistros(archivo, 6, c -> {
             Producto p = new Producto(c.get(0), c.get(1), c.get(2),
                     new BigDecimal(c.get(3)), Integer.parseInt(c.get(4)), Integer.parseInt(c.get(5)));
             // Los archivos anteriores a la baja lógica no tienen la columna "activo".
             p.setActivo(c.size() < 7 || Boolean.parseBoolean(c.get(6)));
             productos.put(p.getCodigo(), p);
+        }, advertencias);
+        if (!advertencias.isEmpty()) {
+            // El próximo guardado reescribe el archivo sin las líneas dañadas: se conserva el original.
+            advertencias.add("Se guardó una copia del archivo original en " + Archivos.respaldar(archivo) + ".");
         }
     }
 

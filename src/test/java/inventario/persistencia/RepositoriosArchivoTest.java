@@ -161,11 +161,50 @@ class RepositoriosArchivoTest {
     }
 
     @Test
-    void lineaIncompletaImpideCargar() throws IOException {
-        // Comportamiento actual; la Fase 2 lo cambiará para saltar la línea con un aviso.
+    void lineasDanadasDeProductosSeIgnoranConAvisoYSeRespaldaElOriginal() throws IOException {
         Path archivo = carpeta.resolve("productos.csv");
-        Files.writeString(archivo, "codigo;nombre;categoria;precio;stock;stockMinimo\nA1;Arroz\n");
+        String original = "codigo;nombre;categoria;precio;stock;stockMinimo;activo\n"
+                + "A1;Arroz\n"
+                + "B2;Sal;General;barato;1;0;true\n"
+                + "C3;Azúcar;General;3.00;-4;0;true\n"
+                + "D4;Aceite;General;9.90;6;1;true\n";
+        Files.writeString(archivo, original);
 
-        assertThrows(IllegalStateException.class, () -> new ArchivoProductoRepositorio(archivo));
+        ArchivoProductoRepositorio repo = new ArchivoProductoRepositorio(archivo);
+
+        assertEquals(List.of("D4"), repo.listar().stream().map(Producto::getCodigo).toList());
+        assertEquals(List.of(
+                "Línea 2 de productos.csv ignorada: faltan columnas",
+                "Línea 3 de productos.csv ignorada: número inválido",
+                "Línea 4 de productos.csv ignorada: El stock no puede ser negativo.",
+                "Se guardó una copia del archivo original en " + carpeta.resolve("productos.csv.respaldo") + "."),
+                repo.getAdvertencias());
+        assertEquals(original, Files.readString(carpeta.resolve("productos.csv.respaldo")));
+    }
+
+    @Test
+    void archivoSinErroresNoGeneraAvisosNiRespaldo() {
+        Path archivo = carpeta.resolve("productos.csv");
+        new ArchivoProductoRepositorio(archivo).guardar(new Producto("A1", "Arroz", "", BigDecimal.ONE, 1, 0));
+
+        assertTrue(new ArchivoProductoRepositorio(archivo).getAdvertencias().isEmpty());
+        assertFalse(Files.exists(carpeta.resolve("productos.csv.respaldo")));
+    }
+
+    @Test
+    void lineasDanadasDeMovimientosSeIgnoranConAviso() throws IOException {
+        Path archivo = carpeta.resolve("movimientos.csv");
+        Files.writeString(archivo, "fecha;codigoProducto;tipo;cantidad;stockResultante;nota\n"
+                + "ayer;A1;ENTRADA;5;5;\n"
+                + "2026-09-25T10:00;A1;ROBO;5;5;\n"
+                + "2026-09-25T11:00;A1;SALIDA;2;3;Venta\n");
+
+        ArchivoMovimientoRepositorio repo = new ArchivoMovimientoRepositorio(archivo);
+
+        assertEquals(1, repo.listar().size());
+        assertEquals(List.of(
+                "Línea 2 de movimientos.csv ignorada: fecha inválida",
+                "Línea 3 de movimientos.csv ignorada: tipo de movimiento desconocido \"ROBO\""),
+                repo.getAdvertencias());
     }
 }

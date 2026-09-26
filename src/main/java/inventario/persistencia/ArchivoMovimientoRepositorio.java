@@ -15,6 +15,7 @@ public class ArchivoMovimientoRepositorio implements MovimientoRepositorio {
 
     private final Path archivo;
     private final List<Movimiento> movimientos = new ArrayList<>();
+    private final List<String> advertencias = new ArrayList<>();
 
     public ArchivoMovimientoRepositorio(Path archivo) {
         this.archivo = archivo;
@@ -42,20 +43,22 @@ public class ArchivoMovimientoRepositorio implements MovimientoRepositorio {
                 .toList();
     }
 
+    /** Avisos sobre líneas del archivo que no se pudieron cargar (siguen en el archivo, que nunca se reescribe). */
+    public List<String> getAdvertencias() {
+        return List.copyOf(advertencias);
+    }
+
     private void cargar() {
-        List<String> lineas = Archivos.leerLineas(archivo);
-        for (int i = 1; i < lineas.size(); i++) {
-            String linea = lineas.get(i);
-            if (linea.isBlank()) {
-                continue;
-            }
-            List<String> c = Csv.separar(linea);
-            if (c.size() < 6) {
-                throw new IllegalStateException("Línea " + (i + 1) + " inválida en " + archivo);
-            }
-            movimientos.add(new Movimiento(LocalDateTime.parse(c.get(0)), c.get(1),
-                    TipoMovimiento.valueOf(c.get(2)), Integer.parseInt(c.get(3)),
-                    Integer.parseInt(c.get(4)), c.get(5)));
+        Archivos.leerRegistros(archivo, 6, c -> movimientos.add(new Movimiento(LocalDateTime.parse(c.get(0)),
+                c.get(1), leerTipo(c.get(2)), Integer.parseInt(c.get(3)), Integer.parseInt(c.get(4)), c.get(5))),
+                advertencias);
+    }
+
+    private static TipoMovimiento leerTipo(String texto) {
+        try {
+            return TipoMovimiento.valueOf(texto);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("tipo de movimiento desconocido \"" + texto + "\"");
         }
     }
 }
