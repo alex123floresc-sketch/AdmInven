@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public class ArchivoProductoRepositorio implements ProductoRepositorio {
 
-    private static final String CABECERA = "codigo;nombre;categoria;precio;stock;stockMinimo";
+    private static final String CABECERA = "codigo;nombre;categoria;precio;stock;stockMinimo;activo";
 
     private final Path archivo;
     private final Map<String, Producto> productos = new LinkedHashMap<>();
@@ -82,6 +82,8 @@ public class ArchivoProductoRepositorio implements ProductoRepositorio {
             }
             Producto p = new Producto(c.get(0), c.get(1), c.get(2),
                     new BigDecimal(c.get(3)), Integer.parseInt(c.get(4)), Integer.parseInt(c.get(5)));
+            // Los archivos anteriores a la baja lógica no tienen la columna "activo".
+            p.setActivo(c.size() < 7 || Boolean.parseBoolean(c.get(6)));
             productos.put(p.getCodigo(), p);
         }
     }
@@ -91,7 +93,7 @@ public class ArchivoProductoRepositorio implements ProductoRepositorio {
         lineas.add(CABECERA);
         for (Producto p : productos.values()) {
             lineas.add(Csv.unir(p.getCodigo(), p.getNombre(), p.getCategoria(),
-                    p.getPrecio().toPlainString(), p.getStock(), p.getStockMinimo()));
+                    p.getPrecio().toPlainString(), p.getStock(), p.getStockMinimo(), p.isActivo()));
         }
         Archivos.escribirLineas(archivo, lineas);
     }

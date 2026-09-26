@@ -49,6 +49,29 @@ class RepositoriosArchivoTest {
     }
 
     @Test
+    void estadoActivoSePersiste() {
+        Path archivo = carpeta.resolve("productos.csv");
+        ArchivoProductoRepositorio repo = new ArchivoProductoRepositorio(archivo);
+        Producto baja = new Producto("A1", "Arroz", "", BigDecimal.ONE, 1, 0);
+        baja.setActivo(false);
+        repo.guardar(baja);
+        repo.guardar(new Producto("B2", "Sal", "", BigDecimal.ONE, 1, 0));
+
+        ArchivoProductoRepositorio recargado = new ArchivoProductoRepositorio(archivo);
+
+        assertFalse(recargado.buscarPorCodigo("A1").orElseThrow().isActivo());
+        assertTrue(recargado.buscarPorCodigo("B2").orElseThrow().isActivo());
+    }
+
+    @Test
+    void archivoSinColumnaActivoCargaLosProductosComoActivos() throws IOException {
+        Path archivo = carpeta.resolve("productos.csv");
+        Files.writeString(archivo, "codigo;nombre;categoria;precio;stock;stockMinimo\nA1;Arroz;General;4.50;10;2\n");
+
+        assertTrue(new ArchivoProductoRepositorio(archivo).buscarPorCodigo("A1").orElseThrow().isActivo());
+    }
+
+    @Test
     void guardarConMismoCodigoReemplaza() {
         Path archivo = carpeta.resolve("productos.csv");
         ArchivoProductoRepositorio repo = new ArchivoProductoRepositorio(archivo);

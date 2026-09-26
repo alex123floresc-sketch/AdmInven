@@ -112,14 +112,76 @@ class InventarioServicioTest {
         assertEquals("Abarrotes", p.getCategoria());
     }
 
+    // ---- Baja lógica ----
+
     @Test
-    void eliminarProductoLoQuitaDelCatalogo() {
-        registrarArroz(0);
+    void productoDadoDeBajaSaleDelCatalogoYDeLosTotalesPeroConservaSuHistorial() {
+        registrarArroz(10);
+        servicio.registrarProducto("SAL", "Sal", "", BigDecimal.ONE, 2, 5);
+        servicio.registrarSalida("ARR-01", 1, "Venta");
 
-        servicio.eliminarProducto("arr-01");
+        servicio.darDeBajaProducto("arr-01");
 
-        assertFalse(servicio.existe("ARR-01"));
-        assertThrows(InventarioException.class, () -> servicio.eliminarProducto("ARR-01"));
+        assertEquals(List.of("SAL"), codigos(servicio.listarProductos()));
+        assertEquals(List.of("ARR-01"), codigos(servicio.listarProductosDadosDeBaja()));
+        assertTrue(servicio.buscar("arroz").isEmpty());
+        assertEquals(List.of("SAL"), codigos(servicio.productosConStockBajo()));
+        assertEquals(new BigDecimal("2.00"), servicio.valorTotalInventario());
+        assertEquals(2, servicio.unidadesTotales());
+        assertEquals(2, servicio.historial("ARR-01").size());
+        assertFalse(servicio.obtener("ARR-01").isActivo());
+    }
+
+    @Test
+    void productoDadoDeBajaNoAdmiteMovimientosNiEdicion() {
+        registrarArroz(10);
+        servicio.darDeBajaProducto("ARR-01");
+
+        String esperado = "El producto ARR-01 está dado de baja.";
+        assertEquals(esperado, assertThrows(InventarioException.class,
+                () -> servicio.registrarEntrada("ARR-01", 1, "")).getMessage());
+        assertThrows(InventarioException.class, () -> servicio.registrarSalida("ARR-01", 1, ""));
+        assertThrows(InventarioException.class, () -> servicio.ajustarStock("ARR-01", 0, ""));
+        assertThrows(InventarioException.class,
+                () -> servicio.actualizarProducto("ARR-01", "X", "", BigDecimal.ONE, 0));
+        assertThrows(InventarioException.class, () -> servicio.darDeBajaProducto("ARR-01"));
+        assertEquals(10, servicio.obtener("ARR-01").getStock());
+    }
+
+    @Test
+    void reactivarDevuelveElProductoAlCatalogo() {
+        registrarArroz(10);
+        servicio.darDeBajaProducto("ARR-01");
+
+        servicio.reactivarProducto("arr-01");
+
+        assertEquals(List.of("ARR-01"), codigos(servicio.listarProductos()));
+        assertEquals(11, servicio.registrarEntrada("ARR-01", 1, "").getStock());
+        assertThrows(InventarioException.class, () -> servicio.reactivarProducto("ARR-01"));
+    }
+
+    @Test
+    void codigoDeProductoDadoDeBajaNoSePuedeReutilizar() {
+        registrarArroz(10);
+        servicio.darDeBajaProducto("ARR-01");
+
+        InventarioException e = assertThrows(InventarioException.class, () -> registrarArroz(0));
+        assertEquals("El código ARR-01 pertenece a un producto dado de baja; reactívelo en su lugar.", e.getMessage());
+        assertThrows(InventarioException.class, () -> servicio.validarCodigoDisponible(" "));
+    }
+
+    @Test
+    void siFallaGuardarLaBajaElProductoSigueActivo() {
+        registrarArroz(10);
+        productos.fallarAlGuardar = true;
+
+        assertThrows(InventarioException.class, () -> servicio.darDeBajaProducto("ARR-01"));
+
+        assertTrue(servicio.obtener("ARR-01").isActivo());
+    }
+
+    private static List<String> codigos(List<Producto> lista) {
+        return lista.stream().map(Producto::getCodigo).toList();
     }
 
     @Test
@@ -256,7 +318,7 @@ class InventarioServicioTest {
 
         assertThrows(InventarioException.class, () -> registrarArroz(20));
 
-        assertFalse(servicio.existe("ARR-01"));
+        assertTrue(productos.buscarPorCodigo("ARR-01").isEmpty());
     }
 
     @Test

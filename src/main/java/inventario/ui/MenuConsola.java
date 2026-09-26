@@ -56,13 +56,15 @@ public class MenuConsola {
         salida.println(" 2. Buscar productos");
         salida.println(" 3. Registrar producto");
         salida.println(" 4. Editar producto");
-        salida.println(" 5. Eliminar producto");
+        salida.println(" 5. Dar de baja producto");
         salida.println(" 6. Registrar entrada de stock");
         salida.println(" 7. Registrar salida de stock");
         salida.println(" 8. Ajustar stock (conteo físico)");
         salida.println(" 9. Productos con stock bajo");
         salida.println("10. Historial de un producto");
         salida.println("11. Resumen del inventario");
+        salida.println("12. Productos dados de baja");
+        salida.println("13. Reactivar producto");
         salida.println(" 0. Salir");
     }
 
@@ -72,13 +74,15 @@ public class MenuConsola {
             case "2" -> imprimirProductos(servicio.buscar(leerLinea("Texto a buscar: ")));
             case "3" -> registrarProducto();
             case "4" -> editarProducto();
-            case "5" -> eliminarProducto();
+            case "5" -> darDeBajaProducto();
             case "6" -> registrarEntrada();
             case "7" -> registrarSalida();
             case "8" -> ajustarStock();
             case "9" -> imprimirProductos(servicio.productosConStockBajo());
             case "10" -> imprimirHistorial();
             case "11" -> imprimirResumen();
+            case "12" -> imprimirProductos(servicio.listarProductosDadosDeBaja());
+            case "13" -> reactivarProducto();
             case "0" -> {
                 return false;
             }
@@ -91,9 +95,7 @@ public class MenuConsola {
 
     private void registrarProducto() {
         String codigo = leerObligatorio("Código: ");
-        if (servicio.existe(codigo)) {
-            throw new InventarioException("Ya existe un producto con el código " + Producto.normalizarCodigo(codigo) + ".");
-        }
+        servicio.validarCodigoDisponible(codigo);
         String nombre = leerObligatorio("Nombre: ");
         String categoria = leerLinea("Categoría [General]: ");
         BigDecimal precio = leerDecimal("Precio unitario: ", null);
@@ -104,7 +106,7 @@ public class MenuConsola {
     }
 
     private void editarProducto() {
-        Producto actual = servicio.obtener(leerObligatorio("Código del producto: "));
+        Producto actual = servicio.obtenerActivo(leerObligatorio("Código del producto: "));
         salida.println("Deje en blanco para conservar el valor actual.");
         String nombre = leerConValorPorDefecto("Nombre", actual.getNombre());
         String categoria = leerConValorPorDefecto("Categoría", actual.getCategoria());
@@ -114,30 +116,36 @@ public class MenuConsola {
         salida.println("Producto actualizado.");
     }
 
-    private void eliminarProducto() {
-        Producto p = servicio.obtener(leerObligatorio("Código del producto: "));
-        String confirmacion = leerLinea("¿Eliminar \"" + p.getNombre() + "\"? (s/N): ");
+    private void darDeBajaProducto() {
+        Producto p = servicio.obtenerActivo(leerObligatorio("Código del producto: "));
+        String confirmacion = leerLinea("¿Dar de baja \"" + p.getNombre() + "\"? Su historial se conservará. (s/N): ");
         if (confirmacion.equalsIgnoreCase("s")) {
-            servicio.eliminarProducto(p.getCodigo());
-            salida.println("Producto eliminado.");
+            servicio.darDeBajaProducto(p.getCodigo());
+            salida.println("Producto dado de baja. Puede reactivarlo con la opción 13.");
         } else {
             salida.println("Operación cancelada.");
         }
     }
 
-    private void registrarEntrada() {
+    private void reactivarProducto() {
         String codigo = leerObligatorio("Código del producto: ");
+        servicio.reactivarProducto(codigo);
+        salida.println("Producto " + servicio.obtener(codigo).getCodigo() + " reactivado.");
+    }
+
+    private void registrarEntrada() {
+        Producto actual = servicio.obtenerActivo(leerObligatorio("Código del producto: "));
         int cantidad = leerEntero("Cantidad que ingresa: ", 1, null);
         String nota = leerLinea("Nota (opcional): ");
-        Producto p = servicio.registrarEntrada(codigo, cantidad, nota);
+        Producto p = servicio.registrarEntrada(actual.getCodigo(), cantidad, nota);
         salida.println("Stock actual de " + p.getNombre() + ": " + p.getStock());
     }
 
     private void registrarSalida() {
-        String codigo = leerObligatorio("Código del producto: ");
-        int cantidad = leerEntero("Cantidad que sale: ", 1, null);
+        Producto actual = servicio.obtenerActivo(leerObligatorio("Código del producto: "));
+        int cantidad = leerEntero("Cantidad que sale (hay " + actual.getStock() + "): ", 1, null);
         String nota = leerLinea("Nota (opcional): ");
-        Producto p = servicio.registrarSalida(codigo, cantidad, nota);
+        Producto p = servicio.registrarSalida(actual.getCodigo(), cantidad, nota);
         salida.println("Stock actual de " + p.getNombre() + ": " + p.getStock());
         if (p.tieneStockBajo()) {
             salida.println("! Atención: el producto está en o por debajo del stock mínimo (" + p.getStockMinimo() + ").");
@@ -145,7 +153,7 @@ public class MenuConsola {
     }
 
     private void ajustarStock() {
-        Producto actual = servicio.obtener(leerObligatorio("Código del producto: "));
+        Producto actual = servicio.obtenerActivo(leerObligatorio("Código del producto: "));
         int nuevo = leerEntero("Stock contado (actual " + actual.getStock() + "): ", 0, null);
         String nota = leerLinea("Motivo del ajuste: ");
         Producto p = servicio.ajustarStock(actual.getCodigo(), nuevo, nota);
@@ -173,7 +181,7 @@ public class MenuConsola {
     private void imprimirHistorial() {
         Producto p = servicio.obtener(leerObligatorio("Código del producto: "));
         List<Movimiento> historial = servicio.historial(p.getCodigo());
-        salida.println("Historial de " + p.getCodigo() + " - " + p.getNombre());
+        salida.println("Historial de " + p.getCodigo() + " - " + p.getNombre() + (p.isActivo() ? "" : " (dado de baja)"));
         if (historial.isEmpty()) {
             salida.println("Sin movimientos registrados.");
             return;
@@ -183,7 +191,7 @@ public class MenuConsola {
 
     private void imprimirResumen() {
         List<Producto> todos = servicio.listarProductos();
-        salida.println("Productos registrados : " + todos.size());
+        salida.println("Productos activos     : " + todos.size());
         salida.println("Unidades en stock     : " + servicio.unidadesTotales());
         salida.println("Valor del inventario  : " + servicio.valorTotalInventario().toPlainString());
         salida.println("Productos stock bajo  : " + servicio.productosConStockBajo().size());

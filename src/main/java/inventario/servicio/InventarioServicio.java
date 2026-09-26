@@ -35,9 +35,7 @@ public class InventarioServicio {
     public Producto registrarProducto(String codigo, String nombre, String categoria,
                                       BigDecimal precio, int stockInicial, int stockMinimo) {
         Producto producto = crearValidado(codigo, nombre, categoria, precio, stockInicial, stockMinimo);
-        if (productos.buscarPorCodigo(producto.getCodigo()).isPresent()) {
-            throw new InventarioException("Ya existe un producto con el código " + producto.getCodigo() + ".");
-        }
+        validarCodigoDisponible(producto.getCodigo());
         try {
             productos.guardar(producto);
             if (stockInicial > 0) {
@@ -52,7 +50,7 @@ public class InventarioServicio {
 
     public Producto actualizarProducto(String codigo, String nombre, String categoria,
                                        BigDecimal precio, int stockMinimo) {
-        Producto actual = obtener(codigo);
+        Producto actual = obtenerActivo(codigo);
         // Se guarda una copia: si algo falla, el producto original queda intacto.
         Producto actualizado = crearValidado(actual.getCodigo(), nombre, categoria, precio,
                 actual.getStock(), stockMinimo);
@@ -60,23 +58,29 @@ public class InventarioServicio {
         return actualizado;
     }
 
-    public void eliminarProducto(String codigo) {
+    /** Baja lógica: el producto sale del catálogo pero conserva su historial y puede reactivarse. */
+    public void darDeBajaProducto(String codigo) {
+        cambiarEstado(obtenerActivo(codigo), false);
+    }
+
+    public void reactivarProducto(String codigo) {
         Producto producto = obtener(codigo);
-        try {
-            productos.eliminar(producto.getCodigo());
-        } catch (RuntimeException e) {
-            throw new InventarioException("No se pudo eliminar el producto: " + e.getMessage(), e);
+        if (producto.isActivo()) {
+            throw new InventarioException("El producto " + producto.getCodigo() + " ya está activo.");
         }
+        cambiarEstado(producto, true);
     }
 
-    public boolean existe(String codigo) {
-        try {
-            return productos.buscarPorCodigo(codigo).isPresent();
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+    /** Falla si el código está vacío o ya lo usa otro producto, activo o dado de baja. */
+    public void validarCodigoDisponible(String codigo) {
+        productos.buscarPorCodigo(normalizar(codigo)).ifPresent(p -> {
+            throw new InventarioException(p.isActivo()
+                    ? "Ya existe un producto con el código " + p.getCodigo() + "."
+                    : "El código " + p.getCodigo() + " pertenece a un producto dado de baja; reactívelo en su lugar.");
+        });
     }
 
+    /** Devuelve el producto aunque esté dado de baja (p. ej. para consultar su historial). */
     public Producto obtener(String codigo) {
         try {
             return productos.buscarPorCodigo(codigo)
@@ -86,10 +90,22 @@ public class InventarioServicio {
         }
     }
 
+    /** Devuelve el producto solo si está activo; los dados de baja no se pueden editar ni mover. */
+    public Producto obtenerActivo(String codigo) {
+        Producto producto = obtener(codigo);
+        if (!producto.isActivo()) {
+            throw new InventarioException("El producto " + producto.getCodigo() + " está dado de baja.");
+        }
+        return producto;
+    }
+
+    /** Catálogo de productos activos, ordenado por código. */
     public List<Producto> listarProductos() {
-        return productos.listar().stream()
-                .sorted(Comparator.comparing(Producto::getCodigo))
-                .toList();
+        return ordenadosPorCodigo(true);
+    }
+
+    public List<Producto> listarProductosDadosDeBaja() {
+        return ordenadosPorCodigo(false);
     }
 
     /** Busca por coincidencia parcial en código, nombre o categoría, sin distinguir mayúsculas. */
@@ -106,7 +122,7 @@ public class InventarioServicio {
 
     public Producto registrarEntrada(String codigo, int cantidad, String nota) {
         validarCantidad(cantidad);
-        Producto producto = obtener(codigo);
+        Producto producto = obtenerActivo(codigo);
         int nuevoStock;
         try {
             nuevoStock = Math.addExact(producto.getStock(), cantidad);
@@ -118,7 +134,7 @@ public class InventarioServicio {
 
     public Producto registrarSalida(String codigo, int cantidad, String nota) {
         validarCantidad(cantidad);
-        Producto producto = obtener(codigo);
+        Producto producto = obtenerActivo(codigo);
         if (cantidad > producto.getStock()) {
             throw new InventarioException("Stock insuficiente: hay " + producto.getStock()
                     + " unidades de " + producto.getNombre() + ".");
@@ -131,7 +147,7 @@ public class InventarioServicio {
         if (nuevoStock < 0) {
             throw new InventarioException("El stock no puede ser negativo.");
         }
-        Producto producto = obtener(codigo);
+        Producto producto = obtenerActivo(codigo);
         int diferencia = nuevoStock - producto.getStock();
         if (diferencia == 0) {
             return producto;
@@ -149,13 +165,13 @@ public class InventarioServicio {
     }
 
     public BigDecimal valorTotalInventario() {
-        return productos.listar().stream()
+        return listarProductos().stream()
                 .map(Producto::valorEnStock)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public int unidadesTotales() {
-        return productos.listar().stream().mapToInt(Producto::getStock).sum();
+        return listarProductos().stream().mapToInt(Producto::getStock).sum();
     }
 
     public List<Movimiento> historial(String codigo) {
@@ -168,6 +184,31 @@ public class InventarioServicio {
     }
 
     // ---- Auxiliares ----
+
+    private List<Producto> ordenadosPorCodigo(boolean activos) {
+        return productos.listar().stream()
+                .filter(p -> p.isActivo() == activos)
+                .sorted(Comparator.comparing(Producto::getCodigo))
+                .toList();
+    }
+
+    private void cambiarEstado(Producto producto, boolean activo) {
+        producto.setActivo(activo);
+        try {
+            productos.guardar(producto);
+        } catch (RuntimeException e) {
+            producto.setActivo(!activo);
+            throw new InventarioException("No se pudo guardar el producto: " + e.getMessage(), e);
+        }
+    }
+
+    private static String normalizar(String codigo) {
+        try {
+            return Producto.normalizarCodigo(codigo);
+        } catch (IllegalArgumentException e) {
+            throw new InventarioException(e.getMessage());
+        }
+    }
 
     private Producto crearValidado(String codigo, String nombre, String categoria,
                                    BigDecimal precio, int stock, int stockMinimo) {

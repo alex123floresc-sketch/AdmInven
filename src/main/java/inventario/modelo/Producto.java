@@ -12,6 +12,8 @@ public final class Producto {
     private BigDecimal precio;
     private int stock;
     private int stockMinimo;
+    /** Un producto dado de baja conserva su historial, pero no admite movimientos ni aparece en el catálogo. */
+    private boolean activo = true;
 
     public Producto(String codigo, String nombre, String categoria,
                     BigDecimal precio, int stock, int stockMinimo) {
@@ -85,6 +87,14 @@ public final class Producto {
             throw new IllegalArgumentException("El stock mínimo no puede ser negativo.");
         }
         this.stockMinimo = stockMinimo;
+    }
+
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 
     public boolean tieneStockBajo() {
