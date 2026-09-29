@@ -81,6 +81,7 @@ public class InventarioServicio {
     /** Actualiza los datos del producto conservando su costo. */
     public Producto actualizarProducto(String codigo, String nombre, String categoria,
                                        BigDecimal precio, int stockMinimo) {
+        sesion.requerir(Permiso.GESTIONAR_PRODUCTOS);
         return actualizarProducto(codigo, nombre, categoria, precio, obtenerActivo(codigo).getCosto(), stockMinimo);
     }
 

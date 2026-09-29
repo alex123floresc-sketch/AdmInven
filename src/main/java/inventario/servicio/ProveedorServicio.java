@@ -57,7 +57,9 @@ public class ProveedorServicio {
         return proveedores.listar().stream().filter(Proveedor::activo).toList();
     }
 
+    /** Incluye los dados de baja y sus datos de contacto: solo para quien gestiona proveedores. */
     public List<Proveedor> listarTodos() {
+        sesion.requerir(Permiso.GESTIONAR_PROVEEDORES);
         return proveedores.listar();
     }
 

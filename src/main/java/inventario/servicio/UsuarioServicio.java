@@ -46,6 +46,17 @@ public class UsuarioServicio {
         sesion.cerrar();
     }
 
+    /**
+     * Vuelve a leer el usuario de la sesión: si otro administrador lo desactivó o le cambió el rol, la sesión
+     * lo refleja. Devuelve {@code false} (y cierra la sesión) si el usuario ya no puede entrar.
+     */
+    public boolean actualizarSesion() {
+        Optional<Usuario> actual = sesion.usuario().flatMap(u -> usuarios.buscar(u.nombreUsuario()))
+                .filter(Usuario::activo);
+        actual.ifPresentOrElse(sesion::iniciar, sesion::cerrar);
+        return actual.isPresent();
+    }
+
     /** Primera ejecución: todavía no hay usuarios y hay que crear el administrador. */
     public boolean requiereConfiguracionInicial() {
         return usuarios.listar().isEmpty();
@@ -101,7 +112,12 @@ public class UsuarioServicio {
         if (u.rol() == Rol.ADMINISTRADOR && rol != Rol.ADMINISTRADOR) {
             protegerUltimoAdministrador(u);
         }
-        guardar(u.conRol(rol));
+        Usuario actualizado = u.conRol(rol);
+        guardar(actualizado);
+        if (actualizado.nombreUsuario().equals(sesion.nombreUsuario())) {
+            // Quien cambia su propio rol pierde (o gana) los permisos en ese mismo momento.
+            sesion.iniciar(actualizado);
+        }
     }
 
     public void restablecerContrasena(String nombreUsuario, char[] nueva) {

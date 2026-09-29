@@ -13,7 +13,8 @@ import java.sql.Statement;
 import java.util.function.Supplier;
 
 /**
- * Conexión única a la base de datos SQLite de la aplicación (uso de escritorio, un solo usuario a la vez).
+ * Conexión única a la base de datos SQLite de la aplicación. La conexión no admite operaciones simultáneas:
+ * el servidor web atiende las peticiones de una en una (ver {@code ServidorWeb}).
  * Al abrirla aplica las migraciones pendientes, así el esquema siempre está al día.
  */
 public final class BaseDeDatos implements Transacciones, AutoCloseable {
@@ -25,6 +26,8 @@ public final class BaseDeDatos implements Transacciones, AutoCloseable {
             conexion = DriverManager.getConnection(url);
             try (Statement st = conexion.createStatement()) {
                 st.execute("PRAGMA foreign_keys = ON");
+                // Si otro programa (p. ej. la ventana y el servidor a la vez) está escribiendo, espera en vez de fallar.
+                st.execute("PRAGMA busy_timeout = 5000");
             }
             Migraciones.aplicar(conexion);
         } catch (SQLException e) {

@@ -288,20 +288,27 @@ final class PestanaProductos implements Seccion {
         if (archivo == null) {
             return;
         }
-        LectorProductosCsv.Resultado leido = LectorProductosCsv.leer(archivo.toPath());
-        InventarioServicio.ResultadoImportacion r = servicio.importarProductos(leido.productos());
-        List<String> avisos = new ArrayList<>(leido.advertencias());
-        avisos.addAll(r.omitidos());
-        StringBuilder mensaje = new StringBuilder(r.importados() + " producto(s) importado(s).");
-        if (!avisos.isEmpty()) {
-            mensaje.append("\n\nNo se importaron ").append(avisos.size()).append(":\n");
-            avisos.stream().limit(15).forEach(a -> mensaje.append("• ").append(a).append('\n'));
-            if (avisos.size() > 15) {
-                mensaje.append("… y ").append(avisos.size() - 15).append(" más.");
+        accion(() -> {
+            LectorProductosCsv.Resultado leido;
+            try {
+                leido = LectorProductosCsv.leer(archivo.toPath());
+            } catch (RuntimeException e) {
+                throw new InventarioException("No se pudo leer " + archivo.getName() + ": " + e.getMessage(), e);
             }
-        }
-        cambioRealizado();
-        Dialogos.informacion(ventana(), "Importación terminada", mensaje.toString());
+            InventarioServicio.ResultadoImportacion r = servicio.importarProductos(leido.productos());
+            List<String> avisos = new ArrayList<>(leido.advertencias());
+            avisos.addAll(r.omitidos());
+            StringBuilder mensaje = new StringBuilder(r.importados() + " producto(s) importado(s).");
+            if (!avisos.isEmpty()) {
+                mensaje.append("\n\nNo se importaron ").append(avisos.size()).append(":\n");
+                avisos.stream().limit(15).forEach(a -> mensaje.append("• ").append(a).append('\n'));
+                if (avisos.size() > 15) {
+                    mensaje.append("… y ").append(avisos.size() - 15).append(" más.");
+                }
+            }
+            cambioRealizado();
+            Dialogos.informacion(ventana(), "Importación terminada", mensaje.toString());
+        });
     }
 
     private void exportar() {

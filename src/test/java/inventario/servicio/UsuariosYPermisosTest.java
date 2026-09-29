@@ -1,6 +1,7 @@
 package inventario.servicio;
 
 import inventario.modelo.Movimiento;
+import inventario.modelo.Permiso;
 import inventario.modelo.Rol;
 import inventario.modelo.Usuario;
 import inventario.persistencia.Transacciones;
@@ -176,6 +177,25 @@ class UsuariosYPermisosTest {
         usuarios.crearUsuario("jefa", "Jefa", Rol.ADMINISTRADOR, clave("jefa2026"));
         usuarios.cambiarRol("admin", Rol.VENDEDOR);
         assertEquals(Rol.VENDEDOR, repo.buscar("admin").orElseThrow().rol());
+        // La sesión abierta pierde los permisos de administrador en ese mismo momento.
+        assertFalse(sesion.puede(Permiso.GESTIONAR_USUARIOS));
+    }
+
+    @Test
+    void actualizarSesionReflejaLosCambiosDeOtroAdministrador() {
+        crearAdminYVendedor();
+        usuarios.iniciarSesion("luis", clave("vende2026"));
+        Sesion otra = Sesion.nueva();
+        UsuarioServicio admin = new UsuarioServicio(repo, otra);
+        admin.iniciarSesion("admin", clave("admin123"));
+
+        admin.cambiarRol("luis", Rol.ADMINISTRADOR);
+        assertTrue(usuarios.actualizarSesion());
+        assertTrue(sesion.puede(Permiso.GESTIONAR_USUARIOS));
+
+        admin.desactivar("luis");
+        assertFalse(usuarios.actualizarSesion());
+        assertTrue(sesion.usuario().isEmpty());
     }
 
     @Test
