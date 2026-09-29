@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administrador de Inventario</title>
+    <link rel="icon" href="icono.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="estilos.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+<noscript>Esta aplicación necesita JavaScript activado.</noscript>
+
+<!-- Inicio de sesión o creación del primer administrador -->
+<main id="acceso" class="acceso" hidden>
+    <form id="form-acceso" class="tarjeta-acceso" autocomplete="on">
+        <div class="marca">
+            <img src="icono.svg" alt="" width="40" height="40">
+            <div>
+                <h1>Administrador de Inventario</h1>
+                <p id="acceso-subtitulo" class="suave">Inicie sesión para continuar.</p>
+            </div>
+        </div>
+        <div id="campos-acceso"></div>
+        <p id="acceso-error" class="mensaje-error" role="alert" hidden></p>
+        <button id="acceso-boton" class="boton primario ancho" type="submit">Entrar</button>
+        <p id="acceso-demo" class="aviso-demo" hidden></p>
+    </form>
+</main>
+
+<!-- Aplicación -->
+<div id="app" hidden>
+    <header class="encabezado">
+        <div class="marca">
+            <img src="icono.svg" alt="" width="32" height="32">
+            <span class="encabezado-titulo">Administrador de Inventario</span>
+        </div>
+        <div class="encabezado-usuario">
+            <div class="quien">
+                <strong id="usuario-nombre"></strong>
+                <span id="usuario-rol" class="encabezado-suave"></span>
+            </div>
+            <button id="boton-contrasena" class="boton encabezado-boton" type="button">Contraseña</button>
+            <button id="boton-salir" class="boton encabezado-boton" type="button">Salir</button>
+        </div>
+    </header>
+    <nav id="pestanas" class="pestanas" role="tablist"></nav>
+    <main id="contenido" class="contenido"></main>
+</div>
+
+<dialog id="dialogo" class="dialogo">
+    <form id="dialogo-form" method="dialog">
+        <h2 id="dialogo-titulo"></h2>
+        <div id="dialogo-cuerpo"></div>
+        <p id="dialogo-error" class="mensaje-error" role="alert" hidden></p>
+        <div class="dialogo-botones">
+            <button id="dialogo-cancelar" class="boton" type="button" value="cancelar">Cancelar</button>
+            <button id="dialogo-aceptar" class="boton primario" type="submit" value="aceptar">Aceptar</button>
+        </div>
+    </form>
+</dialog>
+
+<div id="avisos" class="avisos" aria-live="polite"></div>
+</body>
+</html>

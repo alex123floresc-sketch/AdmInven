@@ -2,6 +2,7 @@ package inventario;
 
 import inventario.ui.MenuConsola;
 import inventario.ui.fx.AppFx;
+import inventario.ui.web.ServidorWeb;
 import javafx.application.Application;
 
 import java.nio.charset.Charset;
@@ -11,8 +12,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Punto de entrada: {@code [--consola] [--demo] [carpeta-de-datos]} (ver {@link Opciones}).
- * Por defecto abre la ventana; con {@code --consola} usa el menú de texto.
+ * Punto de entrada: {@code [--consola | --web] [--puerto=N] [--demo] [carpeta-de-datos]} (ver {@link Opciones}).
+ * Por defecto abre la ventana; con {@code --consola} usa el menú de texto y con {@code --web} inicia el servidor
+ * para usar la aplicación desde el navegador.
  * <p>
  * No extiende {@link Application} a propósito: así el JAR con todas las dependencias puede arrancar JavaFX.
  */
@@ -26,13 +28,39 @@ public class Main {
     private static final Logger REGISTRO_JAVAFX = Logger.getLogger("javafx");
 
     public static void main(String[] args) {
-        Opciones opciones = Opciones.de(List.of(args));
-        if (opciones.consola()) {
+        Opciones opciones;
+        try {
+            opciones = Opciones.de(List.of(args));
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            System.exit(2);
+            return;
+        }
+        if (opciones.web()) {
+            ejecutarWeb(opciones);
+        } else if (opciones.consola()) {
             ejecutarConsola(opciones);
         } else {
             REGISTRO_JAVAFX.setLevel(Level.SEVERE);
             Application.launch(AppFx.class, args);
         }
+    }
+
+    /** El servidor sigue atendiendo hasta que se detiene el proceso (Ctrl+C). */
+    private static void ejecutarWeb(Opciones opciones) {
+        Aplicacion app = opciones.iniciarAplicacion();
+        ServidorWeb servidor = new ServidorWeb(app).iniciar(opciones.puerto());
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            servidor.close();
+            app.close();
+        }));
+        app.avisos().forEach(a -> System.out.println("! " + a));
+        System.out.println("Administrador de Inventario disponible en http://localhost:" + servidor.puerto());
+        System.out.println("Datos: " + opciones.carpetaDatos().toAbsolutePath().normalize());
+        if (app.esDemo()) {
+            System.out.println("Usuarios de demostración: " + Aplicacion.CREDENCIALES_DEMO);
+        }
+        System.out.println("Pulse Ctrl+C para detener el servidor.");
     }
 
     private static void ejecutarConsola(Opciones opciones) {
