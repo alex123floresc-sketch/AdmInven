@@ -221,6 +221,13 @@
 .texto-destacado {
     -fx-font-weight: bold;
 }
+/* Total y stock resultante en el diálogo de compra, venta o ajuste */
+.resumen-operacion {
+    -fx-background-color: #e8eefc;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12 8 12;
+    -fx-font-weight: bold;
+}
 .etiqueta-campo {
     -fx-text-fill: -color-texto-suave;
 }

@@ -55,6 +55,16 @@ final class MovimientoDialogo {
             Dialogos.fila(rejilla, "Precio unitario", new Label(Formatos.moneda(producto.getPrecio())));
         }
         Dialogos.fila(rejilla, "Nota", nota);
+
+        // Mientras se escribe, muestra el importe y cómo quedará el stock (no registra nada).
+        Label resumen = new Label();
+        resumen.getStyleClass().add("resumen-operacion");
+        resumen.setMaxWidth(Double.MAX_VALUE);
+        Runnable actualizar = () -> resumen.setText(resumen(producto, tipo, cantidad.getText(), costo.getText()));
+        cantidad.textProperty().addListener((o, a, n) -> actualizar.run());
+        costo.textProperty().addListener((o, a, n) -> actualizar.run());
+        actualizar.run();
+        rejilla.add(resumen, 0, rejilla.getRowCount(), 2, 1);
         Platform.runLater(cantidad::requestFocus);
 
         String titulo = switch (tipo) {
@@ -76,5 +86,33 @@ final class MovimientoDialogo {
                 case AJUSTE -> servicio.ajustarStock(producto.getCodigo(), valor, nota.getText());
             };
         });
+    }
+
+    private static String resumen(Producto producto, TipoMovimiento tipo, String textoCantidad, String textoCosto) {
+        int cantidad;
+        try {
+            cantidad = Math.max(0, Integer.parseInt(textoCantidad.strip()));
+        } catch (NumberFormatException e) {
+            cantidad = 0;
+        }
+        return switch (tipo) {
+            case SALIDA -> "Total: " + Formatos.moneda(producto.getPrecio().multiply(BigDecimal.valueOf(cantidad)))
+                    + "     Stock después: " + Formatos.entero(producto.getStock() - cantidad);
+            case ENTRADA -> {
+                BigDecimal costo;
+                try {
+                    costo = new BigDecimal(textoCosto.strip().replace(',', '.'));
+                } catch (NumberFormatException e) {
+                    costo = BigDecimal.ZERO;
+                }
+                yield "Total: " + Formatos.moneda(costo.multiply(BigDecimal.valueOf(cantidad)))
+                        + "     Stock después: " + Formatos.entero((long) producto.getStock() + cantidad);
+            }
+            case AJUSTE -> {
+                long diferencia = (long) cantidad - producto.getStock();
+                yield "Diferencia: " + (diferencia > 0 ? "+" : "") + Formatos.entero(diferencia)
+                        + "     Stock después: " + Formatos.entero(cantidad);
+            }
+        };
     }
 }

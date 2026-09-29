@@ -6,6 +6,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.util.Objects;
@@ -34,6 +35,8 @@ public class AppFx extends Application {
                 Dialogos.error(stage, "Error inesperado: " + error.getMessage()));
 
         stage.setTitle("Administrador de Inventario");
+        stage.getIcons().add(new Image(Objects.requireNonNull(AppFx.class.getResource("icono.png"),
+                "falta icono.png").toExternalForm()));
         stage.setMinWidth(900);
         stage.setMinHeight(560);
         mostrarAcceso(stage);
