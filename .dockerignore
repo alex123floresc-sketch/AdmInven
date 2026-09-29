@@ -1,0 +1,9 @@
+target/
+out/
+data/
+demo/
+docs/
+.idea/
+.git/
+empaquetado/
+*.iml
