@@ -130,6 +130,19 @@ class ServidorWebTest {
     }
 
     @Test
+    void soloElAdministradorDescargaLaCopiaDeSeguridad() {
+        Navegador admin = new Navegador();
+        Navegador vendedor = new Navegador();
+        admin.entrar("admin", "admin123");
+        vendedor.entrar("vendedor", "vendedor123");
+
+        Respuesta copia = admin.pedir("GET", "/api/respaldo.db", null, false);
+        assertEquals(200, copia.estado());
+        assertTrue(copia.cuerpo().startsWith("SQLite format 3"));
+        assertEquals(400, vendedor.pedir("GET", "/api/respaldo.db", null).estado());
+    }
+
+    @Test
     void cerrarSesionInvalidaLaCookie() {
         Navegador n = new Navegador();
         n.entrar("admin", "admin123");

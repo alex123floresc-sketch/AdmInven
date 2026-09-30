@@ -816,6 +816,7 @@ async function dibujarUsuarios(raiz) {
     raiz.innerHTML = `
         <div class="barra"><span class="suave">Administrador: acceso completo · Vendedor: consulta productos y registra ventas.</span>
             <span class="espacio"></span>
+            ${puede('RESPALDAR_DATOS') ? '<a class="boton" href="/api/respaldo.db" download>Descargar copia de seguridad</a>' : ''}
             <button class="boton primario" type="button" id="nuevo-usuario">Nuevo usuario</button></div>
         <div id="tabla-usuarios" class="tabla-contenedor"></div>`;
     tabla($('#tabla-usuarios', raiz), [

@@ -1,15 +1,19 @@
 package inventario.persistencia.sqlite;
 
 import inventario.persistencia.PersistenciaException;
+import inventario.persistencia.Respaldos;
 import inventario.persistencia.Transacciones;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -17,11 +21,14 @@ import java.util.function.Supplier;
  * el servidor web atiende las peticiones de una en una (ver {@code ServidorWeb}).
  * Al abrirla aplica las migraciones pendientes, así el esquema siempre está al día.
  */
-public final class BaseDeDatos implements Transacciones, AutoCloseable {
+public final class BaseDeDatos implements Transacciones, Respaldos, AutoCloseable {
 
     private final Connection conexion;
+    /** {@code null} si la base vive en memoria. */
+    private final Path archivo;
 
-    private BaseDeDatos(String url) {
+    private BaseDeDatos(String url, Path archivo) {
+        this.archivo = archivo;
         try {
             conexion = DriverManager.getConnection(url);
             try (Statement st = conexion.createStatement()) {
@@ -36,17 +43,50 @@ public final class BaseDeDatos implements Transacciones, AutoCloseable {
     }
 
     public static BaseDeDatos abrir(Path archivo) {
+        Path absoluto = archivo.toAbsolutePath().normalize();
         try {
-            Files.createDirectories(archivo.toAbsolutePath().getParent());
+            Files.createDirectories(absoluto.getParent());
         } catch (IOException e) {
             throw new PersistenciaException("No se pudo crear la carpeta de datos: " + e.getMessage(), e);
         }
-        return new BaseDeDatos("jdbc:sqlite:" + archivo.toAbsolutePath());
+        return new BaseDeDatos("jdbc:sqlite:" + absoluto, absoluto);
     }
 
     /** Base de datos temporal que desaparece al cerrarse; útil para pruebas. */
     public static BaseDeDatos enMemoria() {
-        return new BaseDeDatos("jdbc:sqlite::memory:");
+        return new BaseDeDatos("jdbc:sqlite::memory:", null);
+    }
+
+    @Override
+    public Optional<Path> archivo() {
+        return Optional.ofNullable(archivo);
+    }
+
+    /**
+     * Usa {@code VACUUM INTO}: SQLite escribe una copia compacta y coherente aunque la base esté abierta.
+     * Se escribe primero en un archivo temporal junto al destino y luego se renombra, así una copia a medias
+     * nunca reemplaza a una buena.
+     */
+    @Override
+    public void copiarEn(Path destino) {
+        Path absoluto = destino.toAbsolutePath().normalize();
+        Path temporal = absoluto.resolveSibling(absoluto.getFileName() + ".tmp");
+        try {
+            Files.createDirectories(absoluto.getParent());
+            Files.deleteIfExists(temporal);
+            try (PreparedStatement ps = conexion.prepareStatement("VACUUM INTO ?")) {
+                ps.setString(1, temporal.toString());
+                ps.execute();
+            }
+            Files.move(temporal, absoluto, StandardCopyOption.REPLACE_EXISTING);
+        } catch (SQLException | IOException e) {
+            try {
+                Files.deleteIfExists(temporal);
+            } catch (IOException ignorada) {
+                e.addSuppressed(ignorada);
+            }
+            throw new PersistenciaException("No se pudo crear la copia de seguridad: " + e.getMessage(), e);
+        }
     }
 
     Connection conexion() {

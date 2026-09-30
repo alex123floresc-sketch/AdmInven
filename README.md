@@ -22,6 +22,7 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 | Usuarios | Inicio de sesión, roles Administrador y Vendedor, cambio y restablecimiento de contraseña |
 | Auditoría | Cada movimiento guarda fecha, usuario, cantidades, precio y costo |
 | Datos | Base SQLite con migraciones automáticas y transacciones; importa los CSV de versiones anteriores |
+| Copias de seguridad | Pestaña Usuarios → «Crear copia de seguridad» (en la web, «Descargar copia de seguridad»): un archivo `.db` con todos los datos, creado sin cerrar el programa |
 
 ### Roles
 
@@ -33,8 +34,15 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 | Gestionar productos y proveedores | ✔ | |
 | Ver reportes, costos y márgenes | ✔ | |
 | Gestionar usuarios | ✔ | |
+| Crear copias de seguridad | ✔ | |
 
 Los permisos se verifican en la capa de servicio, así que se cumplen igual desde la ventana, la web y la consola.
+
+### Restaurar una copia de seguridad
+
+La copia es la base de datos completa (productos, movimientos, proveedores y usuarios con sus contraseñas, así que
+guárdela en un lugar seguro). Para restaurarla: cierre el programa, renombre `inventario.db` de la carpeta de datos
+(por si acaso) y copie ahí el archivo de respaldo con el nombre `inventario.db`.
 
 ## Ejecutar
 
@@ -217,7 +225,7 @@ erDiagram
 
 ## Pruebas
 
-122 pruebas JUnit 5 (`./mvnw test`) cubren:
+128 pruebas JUnit 5 (`./mvnw test`) cubren:
 
 - reglas de stock, costos y márgenes;
 - permisos por rol;
@@ -225,6 +233,7 @@ erDiagram
 - reportes;
 - importación y exportación;
 - repositorios CSV y SQLite, incluidas transacciones, claves foráneas y migraciones;
+- copias de seguridad con la base abierta;
 - la API web de punta a punta: sesiones por navegador, permisos, costos ocultos y protección CSRF.
 
 ## Capturas

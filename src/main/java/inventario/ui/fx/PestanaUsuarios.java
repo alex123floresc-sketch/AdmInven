@@ -3,6 +3,7 @@ package inventario.ui.fx;
 import inventario.modelo.Rol;
 import inventario.modelo.Usuario;
 import inventario.servicio.InventarioException;
+import inventario.servicio.RespaldoServicio;
 import inventario.servicio.UsuarioServicio;
 import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
@@ -22,20 +23,25 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
-/** Administración de usuarios (solo administradores). */
+import java.io.File;
+
+/** Administración de usuarios y copias de seguridad (solo administradores). */
 final class PestanaUsuarios implements Seccion {
 
     private static final PseudoClass INACTIVO = PseudoClass.getPseudoClass("inactivo");
 
     private final UsuarioServicio servicio;
+    private final RespaldoServicio respaldos;
     private final TableView<Usuario> tabla = Tablas.nueva("No hay usuarios.");
     private final Button activarODesactivar = new Button("Desactivar");
     private final BorderPane vista = new BorderPane();
 
-    PestanaUsuarios(UsuarioServicio servicio) {
+    PestanaUsuarios(UsuarioServicio servicio, RespaldoServicio respaldos) {
         this.servicio = servicio;
+        this.respaldos = respaldos;
         tabla.getColumns().add(Tablas.texto("Usuario", Usuario::nombreUsuario, 140));
         tabla.getColumns().add(Tablas.texto("Nombre", Usuario::nombreCompleto, 260));
         tabla.getColumns().add(Tablas.texto("Rol", u -> u.rol().toString(), 140));
@@ -71,7 +77,12 @@ final class PestanaUsuarios implements Seccion {
         barra.setPadding(new Insets(0, 0, 12, 0));
         Label nota = new Label("Administrador: acceso completo.  Vendedor: consulta productos y registra ventas.");
         nota.getStyleClass().add("texto-secundario");
-        HBox pie = new HBox(nota);
+        Region espacioPie = new Region();
+        HBox.setHgrow(espacioPie, Priority.ALWAYS);
+        Button copia = new Button("Crear copia de seguridad");
+        copia.setOnAction(e -> crearCopia());
+        HBox pie = new HBox(8, nota, espacioPie, copia);
+        pie.setAlignment(Pos.CENTER_LEFT);
         pie.setPadding(new Insets(8, 0, 0, 0));
         vista.setTop(barra);
         vista.setCenter(tabla);
@@ -172,6 +183,25 @@ final class PestanaUsuarios implements Seccion {
                 servicio.activar(u.nombreUsuario());
             }
             refrescar();
+        } catch (InventarioException e) {
+            Dialogos.error(ventana(), e.getMessage());
+        }
+    }
+
+    private void crearCopia() {
+        FileChooser selector = new FileChooser();
+        selector.setTitle("Guardar copia de seguridad");
+        selector.setInitialFileName(respaldos.nombreSugerido());
+        selector.getExtensionFilters().add(new FileChooser.ExtensionFilter("Base de datos SQLite", "*.db"));
+        File archivo = selector.showSaveDialog(ventana());
+        if (archivo == null) {
+            return;
+        }
+        try {
+            respaldos.crearCopia(archivo.toPath());
+            Dialogos.informacion(ventana(), "Copia de seguridad creada", "Todos los datos se guardaron en:\n"
+                    + archivo + "\n\nPara restaurarla, cierre el programa y reemplace inventario.db de la "
+                    + "carpeta de datos por esta copia (con el mismo nombre).");
         } catch (InventarioException e) {
             Dialogos.error(ventana(), e.getMessage());
         }

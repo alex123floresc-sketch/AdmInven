@@ -49,7 +49,7 @@ final class VentanaPrincipal {
             secciones.add(new PestanaReportes(app.reportes()));
         }
         if (sesion.puede(Permiso.GESTIONAR_USUARIOS)) {
-            secciones.add(new PestanaUsuarios(app.usuarios()));
+            secciones.add(new PestanaUsuarios(app.usuarios(), app.respaldos()));
         }
 
         for (Seccion seccion : secciones) {

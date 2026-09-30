@@ -9,6 +9,7 @@ import inventario.persistencia.sqlite.SqliteUsuarioRepositorio;
 import inventario.servicio.InventarioServicio;
 import inventario.servicio.ProveedorServicio;
 import inventario.servicio.ReporteServicio;
+import inventario.servicio.RespaldoServicio;
 import inventario.servicio.Sesion;
 import inventario.servicio.UsuarioServicio;
 
@@ -29,7 +30,7 @@ public final class Aplicacion implements AutoCloseable {
 
     /** Los servicios que ve un usuario; todos comparten su {@link Sesion}. */
     public record Servicios(InventarioServicio inventario, ProveedorServicio proveedores, ReporteServicio reportes,
-                            UsuarioServicio usuarios, Sesion sesion) {
+                            UsuarioServicio usuarios, RespaldoServicio respaldos, Sesion sesion) {
     }
 
     private final BaseDeDatos bd;
@@ -87,6 +88,7 @@ public final class Aplicacion implements AutoCloseable {
                 new ProveedorServicio(repoProveedores, sesion),
                 new ReporteServicio(repoProductos, repoMovimientos, repoProveedores, reloj, sesion),
                 new UsuarioServicio(repoUsuarios, sesion),
+                new RespaldoServicio(bd, reloj, sesion),
                 sesion);
     }
 
@@ -112,6 +114,10 @@ public final class Aplicacion implements AutoCloseable {
 
     public UsuarioServicio usuarios() {
         return local.usuarios();
+    }
+
+    public RespaldoServicio respaldos() {
+        return local.respaldos();
     }
 
     /** Mensajes del arranque que conviene mostrar al usuario (importación, líneas ignoradas...). */

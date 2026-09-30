@@ -8,7 +8,8 @@ public enum Permiso {
     AJUSTAR_STOCK("ajustar el stock"),
     GESTIONAR_PROVEEDORES("gestionar proveedores"),
     VER_REPORTES("ver reportes de ventas y ganancias"),
-    GESTIONAR_USUARIOS("gestionar usuarios");
+    GESTIONAR_USUARIOS("gestionar usuarios"),
+    RESPALDAR_DATOS("crear copias de seguridad de los datos");
 
     private final String descripcion;
 

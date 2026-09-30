@@ -145,6 +145,10 @@ final class Rutas {
             s.usuarios().desactivar(ctx.pathParam("usuario"));
             ctx.status(HttpStatus.NO_CONTENT);
         }));
+
+        // Copia de seguridad
+        r.get("/api/respaldo.db", privada((ctx, s) -> descargar(ctx, s.respaldos().nombreSugerido(),
+                "application/vnd.sqlite3", ".db", s.respaldos()::crearCopia)));
     }
 
     // ---- Acceso ----
@@ -307,13 +311,17 @@ final class Rutas {
         return f;
     }
 
-    /** El servicio escribe el CSV en un archivo temporal y se envía como descarga. */
     private static void descargarCsv(Context ctx, String nombre, Consumer<Path> exportar) {
+        descargar(ctx, nombre, "text/csv; charset=UTF-8", ".csv", exportar);
+    }
+
+    /** El servicio escribe el archivo en una ubicación temporal y se envía como descarga. */
+    private static void descargar(Context ctx, String nombre, String tipo, String extension, Consumer<Path> exportar) {
         Path temporal = null;
         try {
-            temporal = Files.createTempFile("inventario-", ".csv");
+            temporal = Files.createTempFile("inventario-", extension);
             exportar.accept(temporal);
-            ctx.contentType("text/csv; charset=UTF-8")
+            ctx.contentType(tipo)
                     .header("Content-Disposition", "attachment; filename=\"" + nombre + "\"")
                     .result(Files.readAllBytes(temporal));
         } catch (IOException e) {
