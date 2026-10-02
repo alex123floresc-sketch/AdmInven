@@ -14,8 +14,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -94,6 +96,20 @@ class SqliteRepositoriosTest {
 
         assertEquals(List.of(m1, m2, m3), movimientos.listar());
         assertEquals(List.of(m1, m3), movimientos.listarPorProducto("a1"));
+    }
+
+    @Test
+    void consultasPorFechaIncluyenAmbosExtremosYDanLaUltimaVenta() {
+        productos.guardar(new Producto("A1", "Arroz", "", BigDecimal.ONE, 0, 0));
+        Movimiento antes = new Movimiento(LocalDateTime.of(2026, 9, 9, 23, 59, 59), "A1", TipoMovimiento.ENTRADA, 9, 9, "");
+        Movimiento inicio = new Movimiento(LocalDateTime.of(2026, 9, 10, 0, 0), "A1", TipoMovimiento.SALIDA, 1, 8, "");
+        Movimiento fin = new Movimiento(LocalDateTime.of(2026, 9, 12, 23, 59, 59), "A1", TipoMovimiento.SALIDA, 1, 7, "");
+        Movimiento despues = new Movimiento(LocalDateTime.of(2026, 9, 13, 0, 0), "A1", TipoMovimiento.AJUSTE, -1, 6, "");
+        List.of(antes, inicio, fin, despues).forEach(movimientos::registrar);
+
+        assertEquals(List.of(inicio, fin),
+                movimientos.listarEntre(LocalDate.of(2026, 9, 10), LocalDate.of(2026, 9, 12)));
+        assertEquals(Map.of("A1", LocalDate.of(2026, 9, 12)), movimientos.ultimaVentaPorProducto());
     }
 
     @Test

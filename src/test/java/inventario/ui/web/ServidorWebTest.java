@@ -1,5 +1,7 @@
 package inventario.ui.web;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import inventario.Aplicacion;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,13 +99,21 @@ class ServidorWebTest {
     }
 
     @Test
-    void elVendedorVendePeroNoVeCostosNiReportes() {
+    void elVendedorVendePeroNoVeCostosNiReportes() throws IOException {
         Navegador vendedor = new Navegador();
         assertEquals(200, vendedor.entrar("vendedor", "vendedor123").estado());
 
         String productos = vendedor.pedir("GET", "/api/productos", null).cuerpo();
         assertTrue(productos.contains("\"costo\":null"));
         assertFalse(productos.contains("\"costo\":1"));
+        // Los datos de demostración dependen de la fecha de hoy: se lee el stock antes de vender.
+        int stockAntes = 0;
+        for (JsonNode p : new ObjectMapper().readTree(productos)) {
+            if (p.get("codigo").asText().equals("ARR-5K")) {
+                stockAntes = p.get("stock").asInt();
+            }
+        }
+        assertTrue(stockAntes >= 2, "ARR-5K debe tener stock para la prueba");
         assertEquals(400, vendedor.pedir("GET", "/api/reportes", null).estado());
         assertEquals(400, vendedor.pedir("POST", "/api/productos/ARR-5K/movimientos",
                 "{\"tipo\":\"ENTRADA\",\"cantidad\":\"5\"}").estado());
@@ -111,7 +121,7 @@ class ServidorWebTest {
         Respuesta venta = vendedor.pedir("POST", "/api/productos/ARR-5K/movimientos",
                 "{\"tipo\":\"SALIDA\",\"cantidad\":\"2\",\"nota\":\"web\"}");
         assertEquals(200, venta.estado());
-        assertTrue(venta.cuerpo().contains("\"stock\":18"));
+        assertTrue(venta.cuerpo().contains("\"stock\":" + (stockAntes - 2) + ","));
     }
 
     @Test

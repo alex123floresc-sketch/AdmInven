@@ -8,7 +8,10 @@ import inventario.persistencia.MovimientoRepositorio;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SqliteMovimientoRepositorio implements MovimientoRepositorio {
 
@@ -40,6 +43,24 @@ public class SqliteMovimientoRepositorio implements MovimientoRepositorio {
         return Jdbc.consultar(bd.conexion(),
                 "SELECT " + COLUMNAS + " FROM movimiento WHERE codigo_producto = ? ORDER BY id",
                 SqliteMovimientoRepositorio::mapear, Producto.normalizarCodigo(codigoProducto));
+    }
+
+    /** Las fechas se guardan como texto ISO: el rango [desde, hasta + 1 día) se compara como cadenas. */
+    @Override
+    public List<Movimiento> listarEntre(LocalDate desde, LocalDate hasta) {
+        return Jdbc.consultar(bd.conexion(),
+                "SELECT " + COLUMNAS + " FROM movimiento WHERE fecha >= ? AND fecha < ? ORDER BY id",
+                SqliteMovimientoRepositorio::mapear, desde, hasta.plusDays(1));
+    }
+
+    @Override
+    public Map<String, LocalDate> ultimaVentaPorProducto() {
+        Map<String, LocalDate> ultima = new HashMap<>();
+        Jdbc.consultar(bd.conexion(),
+                "SELECT codigo_producto, MAX(fecha) AS ultima FROM movimiento WHERE tipo = ? GROUP BY codigo_producto",
+                rs -> ultima.put(rs.getString("codigo_producto"), Jdbc.fecha(rs.getString("ultima")).toLocalDate()),
+                TipoMovimiento.SALIDA);
+        return ultima;
     }
 
     private static Movimiento mapear(ResultSet rs) throws SQLException {

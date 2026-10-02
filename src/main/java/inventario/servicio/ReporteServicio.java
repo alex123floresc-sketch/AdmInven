@@ -145,13 +145,7 @@ public class ReporteServicio {
             throw new InventarioException("La cantidad de días debe ser mayor que cero.");
         }
         LocalDate limite = hoy().minusDays(dias);
-        Map<String, LocalDate> ultimaVenta = new LinkedHashMap<>();
-        for (Movimiento m : movimientos.listar()) {
-            if (m.tipo() == TipoMovimiento.SALIDA) {
-                ultimaVenta.merge(m.codigoProducto(), m.fecha().toLocalDate(),
-                        (a, b) -> a.isAfter(b) ? a : b);
-            }
-        }
+        Map<String, LocalDate> ultimaVenta = movimientos.ultimaVentaPorProducto();
         return productos.listar().stream()
                 .filter(p -> p.isActivo() && p.getStock() > 0)
                 .filter(p -> Optional.ofNullable(ultimaVenta.get(p.getCodigo())).map(f -> f.isBefore(limite))
@@ -216,12 +210,7 @@ public class ReporteServicio {
         if (desde.isAfter(hasta)) {
             throw new InventarioException("La fecha inicial no puede ser posterior a la final.");
         }
-        return movimientos.listar().stream()
-                .filter(m -> {
-                    LocalDate dia = m.fecha().toLocalDate();
-                    return !dia.isBefore(desde) && !dia.isAfter(hasta);
-                })
-                .toList();
+        return movimientos.listarEntre(desde, hasta);
     }
 
     private Map<String, String> nombresDeProductos() {
