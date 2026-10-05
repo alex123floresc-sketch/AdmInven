@@ -131,10 +131,13 @@ final class PestanaReportes implements Seccion {
         Button trimestre = atajo("90 días", 89);
         Button exportar = new Button("Exportar ventas CSV");
         exportar.setOnAction(e -> exportarVentas());
+        Button imprimir = new Button("Imprimir…");
+        imprimir.setTooltip(new Tooltip("Imprime el reporte del período; para un PDF elija «Microsoft Print to PDF»."));
+        imprimir.setOnAction(e -> imprimir());
         Region espacio = new Region();
         HBox.setHgrow(espacio, Priority.ALWAYS);
         HBox barra = new HBox(8, etiqueta, desde, new Label("a"), hasta, hoy, semana, mes, trimestre, espacio,
-                exportar);
+                imprimir, exportar);
         barra.setAlignment(Pos.CENTER_LEFT);
         barra.setPadding(new Insets(0, 0, 12, 0));
         return barra;
@@ -318,7 +321,19 @@ final class PestanaReportes implements Seccion {
 
     // ---- Exportación ----
 
-    private void exportarVentas() {
+    private void imprimir() {
+        if (ultimoReporte == null) {
+            return;
+        }
+        try {
+            InformeImpreso.imprimir(ventana(), ultimoReporte,
+                    servicio.comprasPorProveedor(ultimoReporte.desde(), ultimoReporte.hasta()));
+        } catch (InventarioException | IllegalStateException e) {
+            Dialogos.error(ventana(), e.getMessage());
+        }
+    }
+
+        private void exportarVentas() {
         if (ultimoReporte == null) {
             return;
         }
