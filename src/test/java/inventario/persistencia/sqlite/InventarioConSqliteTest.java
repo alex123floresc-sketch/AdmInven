@@ -1,6 +1,7 @@
 package inventario.persistencia.sqlite;
 
 import inventario.modelo.Movimiento;
+import inventario.modelo.Producto;
 import inventario.persistencia.ImportadorCsv;
 import inventario.persistencia.MovimientoRepositorio;
 import inventario.servicio.InventarioException;
@@ -50,6 +51,35 @@ class InventarioConSqliteTest {
         assertEquals(11, productos.buscarPorCodigo("A1").orElseThrow().getStock());
         assertEquals(List.of(20, 2, 12, 11),
                 servicio.historial("A1").stream().map(Movimiento::stockResultante).toList());
+    }
+
+    @Test
+    void ventaDeVariosProductosSumaLineasRepetidasYSeRegistraEntera() {
+        InventarioServicio servicio = new InventarioServicio(productos, movimientos, bd);
+        servicio.registrarProducto("A1", "Arroz", "", new BigDecimal("4.50"), 10, 0);
+        servicio.registrarProducto("B2", "Sal", "", new BigDecimal("1.20"), 5, 0);
+
+        List<Producto> vendidos = servicio.registrarVenta(List.of(new InventarioServicio.ItemVenta("a1", 2),
+                new InventarioServicio.ItemVenta("B2", 1), new InventarioServicio.ItemVenta("A1", 3)), "Ticket");
+
+        assertEquals(List.of(5, 4), vendidos.stream().map(Producto::getStock).toList());
+        assertEquals(5, servicio.historial("A1").getLast().cantidad());
+    }
+
+    @Test
+    void siUnaLineaDelTicketNoTieneStockNoSeVendeNinguna() {
+        InventarioServicio servicio = new InventarioServicio(productos, movimientos, bd);
+        servicio.registrarProducto("A1", "Arroz", "", new BigDecimal("4.50"), 10, 0);
+        servicio.registrarProducto("B2", "Sal", "", new BigDecimal("1.20"), 1, 0);
+        int movimientosAntes = movimientos.listar().size();
+
+        InventarioException e = assertThrows(InventarioException.class, () -> servicio.registrarVenta(
+                List.of(new InventarioServicio.ItemVenta("A1", 4), new InventarioServicio.ItemVenta("B2", 2)), ""));
+
+        assertEquals("Stock insuficiente: hay 1 unidades de Sal.", e.getMessage());
+        assertEquals(10, productos.buscarPorCodigo("A1").orElseThrow().getStock());
+        assertEquals(movimientosAntes, movimientos.listar().size());
+        assertThrows(InventarioException.class, () -> servicio.registrarVenta(List.of(), ""));
     }
 
     @Test

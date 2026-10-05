@@ -40,6 +40,9 @@ final class VentanaPrincipal {
         Sesion sesion = app.sesion();
 
         secciones.add(new PestanaResumen(app.inventario(), app.reportes(), sesion));
+        if (sesion.puede(Permiso.REGISTRAR_VENTAS)) {
+            secciones.add(new PestanaVenta(app.inventario(), this::refrescarTodo));
+        }
         secciones.add(new PestanaProductos(app, this::refrescarTodo));
         secciones.add(new PestanaMovimientos(app.inventario()));
         if (sesion.puede(Permiso.GESTIONAR_PROVEEDORES)) {

@@ -16,6 +16,7 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 | --- | --- |
 | Productos | Alta, edición, baja lógica y reactivación; búsqueda y filtro por categoría; precio, costo y margen; importar y exportar CSV |
 | Stock | Compras (con proveedor y costo), ventas, ajustes por conteo físico; costo promedio ponderado; historial por producto |
+| Venta rápida | Pestaña para el mostrador: cada lectura del lector de código de barras (o el código escrito + Enter) suma al ticket; `3*CÓDIGO` agrega varias unidades; «Cobrar» registra todo el ticket junto o nada |
 | Alertas | Productos en o por debajo del stock mínimo resaltados en rojo y listados en el Resumen |
 | Proveedores | Registro con validación de RUC/DNI y correo; baja lógica |
 | Reportes | Ventas, costo, ganancia y margen por período; gráfico diario; más vendidos; productos sin rotación; compras por proveedor; exportación a CSV (Excel) |

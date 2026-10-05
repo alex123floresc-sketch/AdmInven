@@ -15,8 +15,10 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class InventarioServicio {
 
@@ -228,6 +230,38 @@ public class InventarioServicio {
         }
         return cambiarStock(producto, producto.getStock() - cantidad, producto.getCosto(),
                 new Cambio(TipoMovimiento.SALIDA, cantidad, producto.getPrecio(), producto.getCosto(), null, nota));
+    }
+
+    /** Una línea del ticket de venta. */
+    public record ItemVenta(String codigo, int cantidad) {
+    }
+
+    /**
+     * Venta de mostrador con varios productos: o se registran todas las líneas o ninguna. Las líneas del mismo
+     * producto se suman, así el stock se valida con el total vendido.
+     *
+     * @return los productos vendidos, ya con el stock descontado, en el orden del ticket
+     */
+    public List<Producto> registrarVenta(List<ItemVenta> items, String nota) {
+        sesion.requerir(Permiso.REGISTRAR_VENTAS);
+        if (items == null || items.isEmpty()) {
+            throw new InventarioException("El ticket está vacío.");
+        }
+        Map<String, Integer> porProducto = new LinkedHashMap<>();
+        for (ItemVenta item : items) {
+            validarCantidad(item.cantidad());
+            String codigo = obtenerActivo(item.codigo()).getCodigo();
+            try {
+                porProducto.merge(codigo, item.cantidad(), Math::addExact);
+            } catch (ArithmeticException e) {
+                throw new InventarioException("La cantidad es demasiado grande.");
+            }
+        }
+        return transacciones.ejecutar(() -> {
+            List<Producto> vendidos = new ArrayList<>();
+            porProducto.forEach((codigo, cantidad) -> vendidos.add(registrarSalida(codigo, cantidad, nota)));
+            return vendidos;
+        });
     }
 
     /** Fija el stock a un valor contado físicamente; la cantidad registrada es la diferencia. */

@@ -228,6 +228,18 @@
     -fx-padding: 8 12 8 12;
     -fx-font-weight: bold;
 }
+.mensaje-exito {
+    -fx-text-fill: -color-exito;
+    -fx-background-color: #e6f4ec;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10 8 10;
+}
+/* Venta rápida */
+.total-ticket {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 8 0 0;
+}
 .etiqueta-campo {
     -fx-text-fill: -color-texto-suave;
 }
