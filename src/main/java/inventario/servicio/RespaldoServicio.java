@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.logging.Logger;
 
 /**
  * Copias de seguridad de todos los datos en un solo archivo. Para restaurar una copia basta con cerrar el
@@ -14,6 +15,7 @@ import java.time.format.DateTimeFormatter;
  */
 public final class RespaldoServicio {
 
+    private static final Logger REGISTRO = Logger.getLogger(RespaldoServicio.class.getName());
     private static final DateTimeFormatter FORMATO_NOMBRE = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmm");
 
     private final Respaldos respaldos;
@@ -43,6 +45,7 @@ public final class RespaldoServicio {
         }
         try {
             respaldos.copiarEn(elegido);
+            REGISTRO.info(() -> "Copia de seguridad creada por " + sesion.nombreUsuario() + ": " + elegido);
         } catch (RuntimeException e) {
             throw new InventarioException(e.getMessage(), e);
         }

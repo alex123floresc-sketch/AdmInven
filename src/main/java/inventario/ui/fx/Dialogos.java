@@ -19,9 +19,13 @@ import javafx.stage.Window;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** Diálogos comunes con el estilo de la aplicación. */
 final class Dialogos {
+
+    private static final Logger REGISTRO = Logger.getLogger(Dialogos.class.getName());
 
     static final ButtonType CANCELAR = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
     static final ButtonType CERRAR = new ButtonType("Cerrar", ButtonBar.ButtonData.CANCEL_CLOSE);
@@ -75,6 +79,7 @@ final class Dialogos {
                 error.setText(e.getMessage());
                 evento.consume();
             } catch (RuntimeException e) {
+                REGISTRO.log(Level.SEVERE, "Error inesperado en un formulario", e);
                 error.setText("Error inesperado: " + e.getMessage());
                 evento.consume();
             }

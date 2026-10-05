@@ -90,6 +90,9 @@
                 <version>3.5.3</version>
                 <configuration>
                     <argLine>${accesoNativo}</argLine>
+                    <systemPropertyVariables>
+                        <java.util.logging.config.file>${project.basedir}/src/test/resources/logging.properties</java.util.logging.config.file>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <!-- JAR ejecutable con todas las dependencias: java -jar target/administrador-de-inventario-1.0-SNAPSHOT.jar -->

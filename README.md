@@ -22,6 +22,7 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 | Usuarios | Inicio de sesión, roles Administrador y Vendedor, cambio y restablecimiento de contraseña |
 | Auditoría | Cada movimiento guarda fecha, usuario, cantidades, precio y costo |
 | Datos | Base SQLite con migraciones automáticas y transacciones; importa los CSV de versiones anteriores |
+| Registro de actividad | `registro0.log` en la carpeta de datos: arranques, accesos, copias y errores |
 | Copias de seguridad | Pestaña Usuarios → «Crear copia de seguridad» (en la web, «Descargar copia de seguridad»): un archivo `.db` con todos los datos, creado sin cerrar el programa |
 
 ### Roles
@@ -43,6 +44,12 @@ Los permisos se verifican en la capa de servicio, así que se cumplen igual desd
 La copia es la base de datos completa (productos, movimientos, proveedores y usuarios con sus contraseñas, así que
 guárdela en un lugar seguro). Para restaurarla: cierre el programa, renombre `inventario.db` de la carpeta de datos
 (por si acaso) y copie ahí el archivo de respaldo con el nombre `inventario.db`.
+
+### Registro de actividad
+
+En la carpeta de datos, `registro0.log` anota cada arranque, los inicios de sesión (y los intentos fallidos), las
+copias de seguridad y los errores inesperados con su detalle técnico. Si algo falla, ese archivo dice qué pasó.
+Al llegar a 1 MB pasa a `registro1.log` (se conservan 3 archivos); nunca se borra al abrir el programa.
 
 ## Ejecutar
 

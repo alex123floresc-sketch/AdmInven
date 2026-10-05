@@ -11,8 +11,6 @@ import io.javalin.http.HttpStatus;
 import io.javalin.http.SameSite;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinJackson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -24,6 +22,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Versión web: sirve la página ({@code resources/inventario/ui/web/publico}) y la API JSON en {@code /api}.
@@ -41,7 +41,7 @@ public final class ServidorWeb implements AutoCloseable {
     private static final int INTENTOS_FALLIDOS_MAXIMOS = 5;
     private static final Duration BLOQUEO_POR_INTENTOS = Duration.ofMinutes(2);
     private static final Set<String> METODOS_QUE_CAMBIAN = Set.of("POST", "PUT", "PATCH", "DELETE");
-    private static final Logger REGISTRO = LoggerFactory.getLogger(ServidorWeb.class);
+    private static final Logger REGISTRO = Logger.getLogger(ServidorWeb.class.getName());
     private static final SecureRandom AZAR = new SecureRandom();
 
     /** Sesión de una persona conectada a la página. */
@@ -84,7 +84,7 @@ public final class ServidorWeb implements AutoCloseable {
             config.routes.exception(NoAutenticado.class, (e, ctx) ->
                     ctx.status(HttpStatus.UNAUTHORIZED).json(new Json.MensajeError(e.getMessage())));
             config.routes.exception(Exception.class, (e, ctx) -> {
-                REGISTRO.error("Error al atender {} {}", ctx.method(), ctx.path(), e);
+                REGISTRO.log(Level.SEVERE, "Error al atender " + ctx.method() + " " + ctx.path(), e);
                 ctx.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .json(new Json.MensajeError("Ocurrió un error inesperado en el servidor."));
             });

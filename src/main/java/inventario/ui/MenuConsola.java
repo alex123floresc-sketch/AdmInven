@@ -14,12 +14,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MenuConsola {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private static final int INTENTOS_DE_ACCESO = 3;
+    private static final Logger REGISTRO = Logger.getLogger(MenuConsola.class.getName());
 
     private final InventarioServicio servicio;
     private final UsuarioServicio usuarios;
@@ -52,6 +55,7 @@ public class MenuConsola {
                     throw fin;
                 } catch (RuntimeException e) {
                     // Un fallo imprevisto (p. ej. de disco) no debe cerrar la aplicación.
+                    REGISTRO.log(Level.SEVERE, "Error inesperado en la consola", e);
                     salida.println("! Error inesperado: " + e.getMessage());
                 }
             }

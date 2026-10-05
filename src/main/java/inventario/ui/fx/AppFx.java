@@ -10,9 +10,13 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** Aplicación JavaFX. Se lanza desde {@link inventario.Main} con los mismos argumentos ({@link Opciones}). */
 public class AppFx extends Application {
+
+    private static final Logger REGISTRO = Logger.getLogger(AppFx.class.getName());
 
     static final String ESTILOS =
             Objects.requireNonNull(AppFx.class.getResource("estilos.css"), "falta estilos.css").toExternalForm();
@@ -27,12 +31,15 @@ public class AppFx extends Application {
         try {
             aplicacion = opciones.iniciarAplicacion();
         } catch (RuntimeException e) {
+            REGISTRO.log(Level.SEVERE, "No se pudo abrir la base de datos", e);
             Dialogos.error(null, "No se pudo abrir la base de datos:\n" + e.getMessage());
             Platform.exit();
             return;
         }
-        Thread.currentThread().setUncaughtExceptionHandler((hilo, error) ->
-                Dialogos.error(stage, "Error inesperado: " + error.getMessage()));
+        Thread.currentThread().setUncaughtExceptionHandler((hilo, error) -> {
+            REGISTRO.log(Level.SEVERE, "Error inesperado en la ventana", error);
+            Dialogos.error(stage, "Error inesperado: " + error.getMessage());
+        });
 
         stage.setTitle("Administrador de Inventario");
         stage.getIcons().add(new Image(Objects.requireNonNull(AppFx.class.getResource("icono.png"),

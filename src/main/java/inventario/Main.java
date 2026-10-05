@@ -26,6 +26,7 @@ public class Main {
      * un aviso que no afecta en nada al funcionamiento.
      */
     private static final Logger REGISTRO_JAVAFX = Logger.getLogger("javafx");
+    private static final Logger REGISTRO = Logger.getLogger(Main.class.getName());
 
     public static void main(String[] args) {
         Opciones opciones;
@@ -36,6 +37,10 @@ public class Main {
             System.exit(2);
             return;
         }
+        Registro.configurar(opciones.carpetaDatos(), opciones.web());
+        String modo = opciones.web() ? "web" : opciones.consola() ? "consola" : "ventana";
+        REGISTRO.info(() -> "Inicio en modo " + modo + (opciones.demo() ? " (demostración)" : "")
+                + ", datos en " + opciones.carpetaDatos().toAbsolutePath().normalize());
         if (opciones.web()) {
             ejecutarWeb(opciones);
         } else if (opciones.consola()) {

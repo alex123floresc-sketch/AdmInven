@@ -7,10 +7,12 @@ import inventario.persistencia.UsuarioRepositorio;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 /** Inicio de sesión y administración de usuarios. */
 public class UsuarioServicio {
 
+    private static final Logger REGISTRO = Logger.getLogger(UsuarioServicio.class.getName());
     private static final String CREDENCIALES_INVALIDAS = "Usuario o contraseña incorrectos.";
 
     private final UsuarioRepositorio usuarios;
@@ -34,8 +36,14 @@ public class UsuarioServicio {
             Usuario u = buscar(nombreUsuario)
                     .filter(Usuario::activo)
                     .filter(x -> Contrasenas.verificar(contrasena, x.contrasena()))
-                    .orElseThrow(() -> new InventarioException(CREDENCIALES_INVALIDAS));
+                    .orElseThrow(() -> {
+                        // Sin caracteres de control: lo escrito por el usuario no puede falsear líneas del registro.
+                        String escrito = String.valueOf(nombreUsuario).replaceAll("\\p{Cntrl}", "?");
+                        REGISTRO.warning(() -> "Intento de acceso fallido con el usuario \"" + escrito + "\"");
+                        return new InventarioException(CREDENCIALES_INVALIDAS);
+                    });
             sesion.iniciar(u);
+            REGISTRO.info(() -> "Inicio de sesión de " + u.nombreUsuario() + " (" + u.rol() + ")");
             return u;
         } finally {
             Contrasenas.borrar(contrasena);
