@@ -6,7 +6,7 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 
 - **Escritorio:** ventana JavaFX, instalable como programa de Windows que se abre con un clic.
 - **Web:** servidor Javalin y una página que se usa desde el navegador (PC o teléfono).
-- **Consola:** menú de texto.
+- **Consola:** menú de texto con productos, stock, proveedores, reportes (y exportación CSV), usuarios y copias de seguridad.
 
 ![Resumen](docs/capturas/resumen.png)
 

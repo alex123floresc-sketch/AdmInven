@@ -92,6 +92,11 @@ public final class Aplicacion implements AutoCloseable {
                 sesion);
     }
 
+    /** Los servicios de la ventana o la consola (un único usuario a la vez). */
+    public Servicios servicios() {
+        return local;
+    }
+
     public boolean esDemo() {
         return demo;
     }

@@ -77,7 +77,7 @@ public class Main {
             if (app.esDemo()) {
                 System.out.println("Usuarios de demostración: " + Aplicacion.CREDENCIALES_DEMO);
             }
-            new MenuConsola(app.inventario(), app.usuarios(), new Scanner(System.in, codificacion), System.out)
+            new MenuConsola(app.servicios(), new Scanner(System.in, codificacion), System.out)
                     .iniciar();
         }
     }
