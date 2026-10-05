@@ -254,6 +254,10 @@ erDiagram
 | --- | --- |
 | ![Acceso](docs/capturas/acceso.png) | ![Vendedor](docs/capturas/vista-vendedor.png) |
 
+| Venta rápida (lector de código de barras) |
+| --- |
+| ![Venta rápida](docs/capturas/venta-rapida.png) |
+
 | Web: reportes | Web: registrar venta |
 | --- | --- |
 | ![Reportes web](docs/capturas/web-reportes.png) | ![Venta web](docs/capturas/web-venta.png) |

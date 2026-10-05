@@ -339,7 +339,7 @@
     -fx-background-color: #24324f;
 }
 .titulo-acceso {
-    -fx-font-size: 18px;
+    -fx-font-size: 22px;
     -fx-font-weight: bold;
 }
 .aviso-demo {
@@ -353,7 +353,34 @@
 }
 .tarjeta-acceso {
     -fx-background-color: -color-superficie;
-    -fx-background-radius: 12;
-    -fx-padding: 28 32 28 32;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 24, 0, 0, 6);
+    -fx-background-radius: 14;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.30), 32, 0, 0, 8);
+}
+.formulario-acceso {
+    -fx-padding: 36 36 32 36;
+}
+.campo-acceso {
+    -fx-pref-height: 36px;
+}
+.formulario-acceso .button.primario {
+    -fx-pref-height: 38px;
+    -fx-font-size: 14px;
+}
+/* Panel de presentación a la izquierda de la tarjeta de acceso */
+.panel-marca {
+    -fx-background-color: linear-gradient(to bottom, #2458d6, #17233b);
+    -fx-background-radius: 14 0 0 14;
+    -fx-padding: 36 28 32 28;
+}
+.marca-nombre {
+    -fx-text-fill: white;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+.marca-lema {
+    -fx-text-fill: #c9d6f5;
+    -fx-font-size: 13px;
+}
+.marca-punto {
+    -fx-text-fill: #e3eafb;
 }
