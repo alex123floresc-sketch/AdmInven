@@ -383,6 +383,22 @@ td.vacio { text-align: center; color: var(--texto-suave); padding: 28px; }
     .impresion { display: block; }
     .impresion * { color: #000 !important; background: transparent !important; box-shadow: none !important; }
     .ticket { width: 72mm; font: 12px/1.4 "Consolas", "Courier New", monospace; }
+
+    .informe { font-size: 10.5pt; }
+    .informe header { border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
+    .informe h1 { font-size: 18pt; }
+    .informe header p { margin: 4px 0 0; }
+    .informe h2 { font-size: 12pt; margin: 16px 0 6px; break-after: avoid; }
+    .informe-resumen { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 0; }
+    .informe-resumen div { border: 1px solid #999; border-radius: 4px; padding: 6px 8px; }
+    .informe-resumen dt { font-size: 8.5pt; }
+    .informe-resumen dd { margin: 0; font-weight: 700; font-size: 12pt; }
+    .informe .grafico { height: 160px; }
+    .informe .grafico .barra-ingreso { fill: #555; }
+    .informe .grafico text { fill: #000; }
+    .informe table { border-collapse: collapse; width: 100%; }
+    .informe th, .informe td { border: 1px solid #999; padding: 3px 6px; position: static; }
+    .informe tr { break-inside: avoid; }
 }
 
 /* Avisos flotantes */

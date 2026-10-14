@@ -1063,6 +1063,7 @@ async function dibujarReportes(raiz) {
             <button class="boton" type="button" data-dias="90">90 días</button>
             <span class="espacio"></span>
             <a class="boton" href="/api/reportes/ventas.csv?${esc(consulta)}" download>Exportar ventas CSV</a>
+            <button class="boton" type="button" id="imprimir-reporte">Imprimir / PDF</button>
         </div>
         <section class="tarjetas">
             ${tarjeta('Ingresos', moneda(r.ingresos))}
@@ -1128,6 +1129,48 @@ async function dibujarReportes(raiz) {
         periodo.hasta = hoyIso();
         refrescar();
     });
+    // Al imprimir, el navegador ofrece «Guardar como PDF» como impresora.
+    $('#imprimir-reporte', raiz).onclick = () => imprimir(htmlInforme(r, $('#grafico', raiz).innerHTML));
+}
+
+/** Informe del período para imprimir: resumen, ventas por día, por producto y compras por proveedor. */
+function htmlInforme(r, grafico) {
+    const tablaInforme = (columnas, filas, vacio) => `<table><thead><tr>${columnas.map(c =>
+        `<th class="${c.num ? 'num' : ''}">${esc(c.titulo)}</th>`).join('')}</tr></thead><tbody>${filas.length === 0
+        ? `<tr><td colspan="${columnas.length}">${esc(vacio)}</td></tr>`
+        : filas.map(f => `<tr>${columnas.map(c => `<td class="${c.num ? 'num' : ''}">${c.texto(f)}</td>`).join('')}</tr>`)
+            .join('')}</tbody></table>`;
+    const generado = new Date().toLocaleString('es-PE', {dateStyle: 'long', timeStyle: 'short'});
+    return `<article class="informe">
+        <header><h1>Reporte de ventas</h1>
+            <p>Del ${esc(fechaCorta(r.desde))} al ${esc(fechaCorta(r.hasta))} · generado el ${esc(generado)}
+                por ${esc(estado.usuario.nombre)}</p></header>
+        <dl class="informe-resumen">
+            <div><dt>Ingresos</dt><dd>${moneda(r.ingresos)}</dd></div>
+            <div><dt>Costo de lo vendido</dt><dd>${moneda(r.costo)}</dd></div>
+            <div><dt>Ganancia</dt><dd>${moneda(r.ganancia)}</dd></div>
+            <div><dt>Margen</dt><dd>${porcentaje(r.margen)}</dd></div>
+            <div><dt>Unidades vendidas</dt><dd>${entero(r.unidades)}</dd></div>
+        </dl>
+        <h2>Ventas por día</h2>${grafico}
+        <h2>Ventas por producto</h2>
+        ${tablaInforme([
+            {titulo: 'Código', texto: l => esc(l.codigo)},
+            {titulo: 'Producto', texto: l => esc(l.nombre)},
+            {titulo: 'Unidades', num: true, texto: l => entero(l.unidades)},
+            {titulo: 'Ingresos', num: true, texto: l => numero(l.ingresos)},
+            {titulo: 'Costo', num: true, texto: l => numero(l.costo)},
+            {titulo: 'Ganancia', num: true, texto: l => numero(l.ganancia)},
+            {titulo: 'Margen', num: true, texto: l => porcentaje(l.margen)},
+        ], r.lineas, 'Sin ventas en el período.')}
+        <h2>Compras por proveedor</h2>
+        ${tablaInforme([
+            {titulo: 'Proveedor', texto: c => esc(c.proveedor)},
+            {titulo: 'Compras', num: true, texto: c => entero(c.compras)},
+            {titulo: 'Unidades', num: true, texto: c => entero(c.unidades)},
+            {titulo: 'Monto', num: true, texto: c => numero(c.monto)},
+        ], r.compras, 'Sin compras en el período.')}
+    </article>`;
 }
 
 /** Gráfico de barras en SVG (sin librerías): ingresos de cada día del período. */
