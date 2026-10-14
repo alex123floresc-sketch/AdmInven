@@ -37,6 +37,23 @@ function hoyIso(desplazamientoDias = 0) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Íconos de trazo (24×24) para pestañas y botones; toman el color del texto. */
+const ICONOS = {
+    resumen: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>'
+        + '<rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+    productos: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+    movimientos: '<path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/>',
+    proveedores: '<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+    reportes: '<path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/>',
+    usuarios: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+    sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2'
+        + 'M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    luna: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+};
+
+const icono = nombre => `<svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[nombre]}</svg>`;
+
 const NOMBRES_TIPO = {ENTRADA: 'Compra', SALIDA: 'Venta', AJUSTE: 'Ajuste'};
 
 // ---------- Comunicación con el servidor ----------
@@ -103,6 +120,50 @@ async function intentar(accion) {
             aviso(e.message, true);
         }
     }
+}
+
+// ---------- Tema claro u oscuro ----------
+
+/** localStorage puede no estar disponible (navegación privada): entonces el tema simplemente no se recuerda. */
+function leerPreferencia(clave) {
+    try {
+        return localStorage.getItem(clave);
+    } catch {
+        return null;
+    }
+}
+
+function guardarPreferencia(clave, valor) {
+    try {
+        localStorage.setItem(clave, valor);
+    } catch {
+        // Sin almacenamiento: la preferencia dura hasta cerrar la página.
+    }
+}
+
+const temaDelSistema = matchMedia('(prefers-color-scheme: dark)');
+const temaActual = () => document.documentElement.dataset.tema ?? (temaDelSistema.matches ? 'oscuro' : 'claro');
+
+function aplicarTema(tema) {
+    if (tema === 'claro' || tema === 'oscuro') {
+        document.documentElement.dataset.tema = tema;
+    }
+    const oscuro = temaActual() === 'oscuro';
+    $$('.boton-tema').forEach(b => {
+        b.innerHTML = icono(oscuro ? 'sol' : 'luna');
+        b.title = oscuro ? 'Usar tema claro' : 'Usar tema oscuro';
+        b.setAttribute('aria-label', b.title);
+    });
+}
+
+function iniciarTema() {
+    aplicarTema(leerPreferencia('tema'));
+    temaDelSistema.onchange = () => aplicarTema();
+    $$('.boton-tema').forEach(b => b.onclick = () => {
+        const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
+        guardarPreferencia('tema', nuevo);
+        aplicarTema(nuevo);
+    });
 }
 
 // ---------- Diálogo genérico ----------
@@ -175,8 +236,9 @@ const campo = (etiqueta, nombre, {tipo = 'text', valor = '', ayuda = '', complet
 // ---------- Tablas ----------
 
 /**
- * Tabla ordenable. {@code columnas}: [{titulo, valor(fila), html?(fila), num?, orden?}].
- * El HTML de cada celda ya viene escapado por quien define la columna.
+ * Tabla ordenable. {@code columnas}: [{titulo, valor(fila), html?(fila), num?, clase?, principal?}].
+ * El HTML de cada celda ya viene escapado por quien define la columna. En el celular cada fila se muestra como
+ * tarjeta y la columna {@code principal} hace de título.
  */
 function tabla(contenedor, columnas, filas, {vacio = 'Sin datos.', claseFila, orden} = {}) {
     let criterio = orden ?? null;
@@ -198,7 +260,7 @@ function tabla(contenedor, columnas, filas, {vacio = 'Sin datos.', claseFila, or
         const cuerpo = datos.length === 0
             ? `<tr><td class="vacio" colspan="${columnas.length}">${esc(vacio)}</td></tr>`
             : datos.map(f => `<tr class="${claseFila?.(f) ?? ''}">${columnas.map(c =>
-                `<td class="${c.num ? 'num' : ''} ${c.clase ?? ''}">${c.html ? c.html(f) : esc(c.valor(f))}</td>`
+                `<td class="${c.num ? 'num' : ''} ${c.clase ?? ''} ${c.principal ? 'principal' : ''}" data-etiqueta="${esc(c.titulo)}">${c.html ? c.html(f) : esc(c.valor(f))}</td>`
             ).join('')}</tr>`).join('');
         contenedor.innerHTML = `<table><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}</tbody></table>`;
         $$('th.ordenable', contenedor).forEach(th => th.onclick = () => {
@@ -212,7 +274,7 @@ function tabla(contenedor, columnas, filas, {vacio = 'Sin datos.', claseFila, or
 
 const colMovimientos = (conProducto = true) => [
     {titulo: 'Fecha', valor: m => m.fecha, html: m => esc(fechaHora(m.fecha))},
-    ...(conProducto ? [{titulo: 'Producto', valor: m => m.producto}] : []),
+    ...(conProducto ? [{titulo: 'Producto', valor: m => m.producto, principal: true}] : []),
     {titulo: 'Tipo', valor: m => m.tipo,
         html: m => `<span class="etiqueta-tipo tipo-${m.tipo}">${NOMBRES_TIPO[m.tipo]}</span>`},
     {titulo: 'Cantidad', valor: m => m.cantidad, num: true,
@@ -224,6 +286,7 @@ const colMovimientos = (conProducto = true) => [
 // ---------- Acceso ----------
 
 async function iniciar() {
+    iniciarTema();
     $('#boton-salir').onclick = () => intentar(async () => {
         await api('DELETE', '/api/sesion');
         estado.usuario = null;
@@ -338,7 +401,7 @@ const PESTANAS = [
 
 function dibujarPestanas() {
     $('#pestanas').innerHTML = PESTANAS.filter(p => p.visible()).map(p =>
-        `<button type="button" role="tab" data-id="${p.id}">${p.titulo}</button>`).join('');
+        `<button type="button" role="tab" data-id="${p.id}">${icono(p.id)}<span>${p.titulo}</span></button>`).join('');
     $$('#pestanas button').forEach(b => b.onclick = () => irA(b.dataset.id));
 }
 
@@ -385,7 +448,7 @@ async function dibujarResumen(raiz) {
             </div>
         </section>`;
     tabla($('#tabla-reponer', raiz), [
-        {titulo: 'Producto', valor: p => p.nombre,
+        {titulo: 'Producto', valor: p => p.nombre, principal: true,
             html: p => esc(p.nombre) + (p.stock === 0 ? '<span class="insignia">Agotado</span>' : '')},
         {titulo: 'Stock', valor: p => p.stock, num: true},
         {titulo: 'Mínimo', valor: p => p.stockMinimo, num: true},
@@ -427,7 +490,7 @@ async function dibujarProductos(raiz) {
             && (!t || [p.codigo, p.nombre, p.categoria].some(x => x.toLowerCase().includes(t))));
         const columnas = [
             {titulo: 'Código', valor: p => p.codigo},
-            {titulo: 'Nombre', valor: p => p.nombre,
+            {titulo: 'Nombre', valor: p => p.nombre, principal: true,
                 html: p => esc(p.nombre) + (p.activo && p.stock === 0 ? '<span class="insignia">Agotado</span>' : '')},
             {titulo: 'Categoría', valor: p => p.categoria},
             {titulo: 'Precio', valor: p => Number(p.precio), num: true, html: p => numero(p.precio)},
@@ -650,7 +713,7 @@ async function dibujarProveedores(raiz) {
             <button class="boton primario" type="button" id="nuevo-proveedor">Nuevo proveedor</button></div>
         <div id="tabla-proveedores" class="tabla-contenedor"></div>`;
     tabla($('#tabla-proveedores', raiz), [
-        {titulo: 'Nombre', valor: x => x.nombre},
+        {titulo: 'Nombre', valor: x => x.nombre, principal: true},
         {titulo: 'RUC / DNI', valor: x => x.documento},
         {titulo: 'Teléfono', valor: x => x.telefono},
         {titulo: 'Correo', valor: x => x.email},
@@ -746,20 +809,20 @@ async function dibujarReportes(raiz) {
     $$('.relleno', raiz).forEach(el => el.style.width = el.dataset.ancho + '%');
 
     tabla($('#tabla-ventas', raiz), [
-        {titulo: 'Producto', valor: l => l.nombre},
+        {titulo: 'Producto', valor: l => l.nombre, principal: true},
         {titulo: 'Unid.', valor: l => l.unidades, num: true},
         {titulo: 'Ingresos', valor: l => Number(l.ingresos), num: true, html: l => numero(l.ingresos)},
         {titulo: 'Ganancia', valor: l => Number(l.ganancia), num: true, html: l => numero(l.ganancia)},
         {titulo: 'Margen', valor: l => Number(l.margen), num: true, html: l => porcentaje(l.margen)},
     ], r.lineas, {vacio: 'Sin ventas en el período.'});
     tabla($('#tabla-compras', raiz), [
-        {titulo: 'Proveedor', valor: c => c.proveedor},
+        {titulo: 'Proveedor', valor: c => c.proveedor, principal: true},
         {titulo: 'Compras', valor: c => c.compras, num: true},
         {titulo: 'Unidades', valor: c => c.unidades, num: true},
         {titulo: 'Monto', valor: c => Number(c.monto), num: true, html: c => numero(c.monto)},
     ], r.compras, {vacio: 'Sin compras en el período.'});
     tabla($('#tabla-sin-rotacion', raiz), [
-        {titulo: 'Producto', valor: q => q.nombre},
+        {titulo: 'Producto', valor: q => q.nombre, principal: true},
         {titulo: 'Stock', valor: q => q.stock, num: true},
         {titulo: 'Al costo', valor: q => Number(q.costoEnStock), num: true, html: q => numero(q.costoEnStock)},
         {titulo: 'Última venta', valor: q => q.ultimaVenta ?? '', html: q => q.ultimaVenta
@@ -821,7 +884,7 @@ async function dibujarUsuarios(raiz) {
         <div id="tabla-usuarios" class="tabla-contenedor"></div>`;
     tabla($('#tabla-usuarios', raiz), [
         {titulo: 'Usuario', valor: u => u.usuario},
-        {titulo: 'Nombre', valor: u => u.nombre},
+        {titulo: 'Nombre', valor: u => u.nombre, principal: true},
         {titulo: 'Rol', valor: u => u.rolNombre},
         {titulo: 'Estado', valor: u => u.activo ? 'Activo' : 'Desactivado'},
         {titulo: '', clase: 'acciones', html: u => {

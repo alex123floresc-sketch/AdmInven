@@ -20,8 +20,9 @@
     color-scheme: light;
 }
 
+/* Tema oscuro: sigue al sistema salvo que se elija uno con el botón del encabezado (data-tema en <html>). */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-tema="claro"]) {
         --fondo: #0f1522;
         --superficie: #172033;
         --superficie-2: #1c273d;
@@ -39,6 +40,24 @@
         --sombra: none;
         color-scheme: dark;
     }
+}
+:root[data-tema="oscuro"] {
+    --fondo: #0f1522;
+    --superficie: #172033;
+    --superficie-2: #1c273d;
+    --borde: #2a3650;
+    --texto: #e5e9f0;
+    --texto-suave: #9aa6ba;
+    --primario: #5b8cff;
+    --primario-oscuro: #4a78e6;
+    --primario-suave: #1f2e52;
+    --peligro: #f06a61;
+    --exito: #4cc38a;
+    --aviso-fondo: #3a1e20;
+    --aviso-texto: #ff9d96;
+    --encabezado: #0b1120;
+    --sombra: none;
+    color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -77,6 +96,9 @@ h3 { font-size: 15px; }
 .boton.peligro { color: var(--peligro); }
 .boton.chico { padding: 4px 9px; font-size: 13px; }
 .boton.ancho { width: 100%; padding: 10px; }
+.icono { width: 18px; height: 18px; flex: none; display: block; }
+.boton-tema { padding: 6px 8px; line-height: 0; }
+.boton-tema-flotante { position: fixed; top: 16px; right: 16px; }
 .boton:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
     outline: 2px solid var(--primario);
     outline-offset: 1px;
@@ -157,6 +179,9 @@ label.casilla { display: inline-flex; gap: 6px; align-items: center; cursor: poi
     scrollbar-width: none;
 }
 .pestanas button {
+    display: flex;
+    gap: 7px;
+    align-items: center;
     font: inherit;
     font-weight: 600;
     background: none;
@@ -313,4 +338,41 @@ td.vacio { text-align: center; color: var(--texto-suave); padding: 28px; }
     .tabla-contenedor { max-height: none; }
     th, td { white-space: nowrap; padding: 8px 10px; }
     .tarjeta .valor { font-size: 20px; }
+    .pestanas button { padding: 10px 10px 7px; }
+
+    /* Las tablas se leen como tarjetas: cada celda muestra el título de su columna. */
+    .tabla-contenedor thead { display: none; }
+    .tabla-contenedor table, .tabla-contenedor tbody, .tabla-contenedor tr { display: block; }
+    .tabla-contenedor tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 6px 14px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--borde);
+    }
+    .tabla-contenedor tbody tr:hover { background: none; }
+    .tabla-contenedor td {
+        display: block;
+        padding: 0;
+        border: 0;
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        background: none !important;
+    }
+    .tabla-contenedor td::before {
+        content: attr(data-etiqueta);
+        display: block;
+        color: var(--texto-suave);
+        font-size: 11px;
+        font-style: normal;
+        font-weight: 400;
+    }
+    .tabla-contenedor td[data-etiqueta=""]::before { content: none; }
+    .tabla-contenedor td.principal { grid-column: 1 / -1; order: -1; font-weight: 600; font-size: 15px; }
+    .tabla-contenedor td.principal::before { content: none; }
+    .tabla-contenedor td.acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
+    td.acciones .boton + .boton { margin-left: 0; }
+    .tabla-contenedor td.vacio { grid-column: 1 / -1; text-align: center; padding: 20px 0; }
+    .tabla-contenedor tr.bajo { background: var(--aviso-fondo); }
 }
