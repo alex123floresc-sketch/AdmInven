@@ -42,6 +42,8 @@ const ICONOS = {
     resumen: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>'
         + '<rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
     productos: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+    caja: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>'
+        + '<path d="M2 3h3l2.7 12.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.2L21 7H6"/>',
     movimientos: '<path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/>',
     proveedores: '<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
     reportes: '<path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/>',
@@ -173,7 +175,7 @@ function iniciarTema() {
  * el mensaje se muestra dentro del diálogo y este sigue abierto para corregir los datos.
  */
 function dialogo({titulo, cuerpo, textoAceptar = 'Guardar', alAceptar, ancho = false, soloCerrar = false,
-                     alAbrir}) {
+                     alAbrir, textoCancelar}) {
     const dlg = $('#dialogo');
     const form = $('#dialogo-form');
     const error = $('#dialogo-error');
@@ -186,7 +188,7 @@ function dialogo({titulo, cuerpo, textoAceptar = 'Guardar', alAceptar, ancho = f
     aceptar.hidden = soloCerrar;
     aceptar.textContent = textoAceptar;
     aceptar.disabled = false;
-    cancelar.textContent = soloCerrar ? 'Cerrar' : 'Cancelar';
+    cancelar.textContent = textoCancelar ?? (soloCerrar ? 'Cerrar' : 'Cancelar');
 
     return new Promise(resolver => {
         const cerrar = resultado => {
@@ -215,7 +217,8 @@ function dialogo({titulo, cuerpo, textoAceptar = 'Guardar', alAceptar, ancho = f
             }
         };
         cancelar.onclick = () => cerrar(null);
-        dlg.onclose = () => cerrar(null);
+        // El evento close llega después de cerrar: si para entonces ya se abrió otro diálogo, no es para este.
+        dlg.onclose = () => dlg.open || cerrar(null);
         dlg.showModal();
         const primero = $('#dialogo-cuerpo input:not([type=hidden]):not([readonly]), #dialogo-cuerpo select');
         (primero ?? cancelar).focus();
@@ -232,6 +235,12 @@ const campo = (etiqueta, nombre, {tipo = 'text', valor = '', ayuda = '', complet
         <input type="${tipo}" name="${nombre}" value="${esc(valor)}" ${extra}>
         ${ayuda ? `<span class="ayuda">${esc(ayuda)}</span>` : ''}
     </label>`;
+
+/** Imprime solo el HTML dado (ticket o informe); el resto de la página se oculta al imprimir. */
+function imprimir(html) {
+    $('#impresion').innerHTML = html;
+    window.print();
+}
 
 // ---------- Tablas ----------
 
@@ -392,6 +401,7 @@ async function cambiarMiContrasena() {
 
 const PESTANAS = [
     {id: 'resumen', titulo: 'Resumen', visible: () => true, dibujar: dibujarResumen},
+    {id: 'caja', titulo: 'Caja', visible: () => puede('REGISTRAR_VENTAS'), dibujar: dibujarCaja},
     {id: 'productos', titulo: 'Productos', visible: () => true, dibujar: dibujarProductos},
     {id: 'movimientos', titulo: 'Movimientos', visible: () => true, dibujar: dibujarMovimientos},
     {id: 'proveedores', titulo: 'Proveedores', visible: () => puede('GESTIONAR_PROVEEDORES'), dibujar: dibujarProveedores},
@@ -455,6 +465,281 @@ async function dibujarResumen(raiz) {
     ], r.stockBajo, {vacio: 'Todos los productos tienen stock suficiente.'});
     tabla($('#tabla-recientes', raiz), colMovimientos(), r.ultimosMovimientos, {vacio: 'Aún no hay movimientos.'});
     $('#ver-movimientos', raiz).onclick = () => irA('movimientos');
+}
+
+// ---------- Caja ----------
+
+/**
+ * Venta de mostrador. Un lector de código de barras escribe el código y pulsa Enter, así cada lectura suma una
+ * unidad; "3*CÓDIGO" suma tres. También se puede escribir parte del nombre o tocar un producto del mosaico.
+ * El ticket ({codigo, cantidad}) se guarda en la pestaña del navegador para no perderlo al recargar.
+ */
+const caja = {productos: [], ticket: leerTicket()};
+
+function leerTicket() {
+    try {
+        const guardado = JSON.parse(sessionStorage.getItem('ticket') ?? '[]');
+        return Array.isArray(guardado) ? guardado : [];
+    } catch {
+        return [];
+    }
+}
+
+function guardarTicket() {
+    try {
+        sessionStorage.setItem('ticket', JSON.stringify(caja.ticket));
+    } catch {
+        // Sin almacenamiento: el ticket vive mientras la página esté abierta.
+    }
+}
+
+const METODOS_PAGO = ['Efectivo', 'Tarjeta', 'Yape / Plin', 'Transferencia'];
+
+async function dibujarCaja(raiz) {
+    caja.productos = await api('GET', '/api/productos');
+    // Las líneas de productos que ya no están en el catálogo salen del ticket.
+    caja.ticket = caja.ticket.filter(l => caja.productos.some(p => p.codigo === l.codigo));
+    raiz.innerHTML = `
+        <div class="caja">
+            <section class="panel caja-entrada">
+                <input type="search" id="caja-codigo" class="caja-codigo" autocomplete="off" enterkeyhint="done"
+                       placeholder="Escanee o escriba el código o el nombre y pulse Enter" aria-label="Código o nombre">
+                <p class="suave">Varias unidades: <strong>3*CÓDIGO</strong>. Toque un producto para sumarlo al ticket.</p>
+                <p id="caja-mensaje" class="mensaje-error" role="alert" hidden></p>
+                <div id="caja-mosaico" class="mosaico"></div>
+            </section>
+            <section class="panel caja-ticket">
+                <div class="panel-cabecera"><h3>Ticket</h3><span id="caja-unidades" class="suave"></span></div>
+                <div id="caja-lineas" class="lineas-ticket"></div>
+                <div class="total-ticket"><span>Total</span><strong id="caja-total"></strong></div>
+                <div class="caja-botones">
+                    <button class="boton" type="button" id="caja-vaciar">Vaciar</button>
+                    <button class="boton primario" type="button" id="caja-cobrar">Cobrar</button>
+                </div>
+            </section>
+            <button class="boton primario barra-cobro" type="button" id="caja-ir-ticket"></button>
+        </div>`;
+    const entrada = $('#caja-codigo', raiz);
+    entrada.oninput = () => dibujarMosaico(raiz);
+    entrada.onkeydown = e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            agregarAlTicket(raiz, entrada.value);
+            entrada.value = '';
+            dibujarMosaico(raiz);
+        }
+    };
+    $('#caja-mosaico', raiz).onclick = e => {
+        const b = e.target.closest('button[data-codigo]');
+        if (b) {
+            agregarAlTicket(raiz, b.dataset.codigo);
+        }
+    };
+    $('#caja-lineas', raiz).onclick = e => {
+        const b = e.target.closest('button[data-accion]');
+        if (!b) {
+            return;
+        }
+        const linea = caja.ticket.find(l => l.codigo === b.dataset.codigo);
+        if (b.dataset.accion === 'mas') {
+            agregarAlTicket(raiz, linea.codigo);
+            return;
+        }
+        linea.cantidad -= b.dataset.accion === 'menos' ? 1 : linea.cantidad;
+        caja.ticket = caja.ticket.filter(l => l.cantidad > 0);
+        mensajeCaja(raiz, '');
+        dibujarTicket(raiz);
+    };
+    $('#caja-vaciar', raiz).onclick = () => {
+        caja.ticket = [];
+        mensajeCaja(raiz, '');
+        dibujarTicket(raiz);
+        entrada.focus();
+    };
+    $('#caja-cobrar', raiz).onclick = () => cobrar();
+    $('#caja-ir-ticket', raiz).onclick = () => $('.caja-ticket', raiz).scrollIntoView({behavior: 'smooth'});
+    dibujarMosaico(raiz);
+    dibujarTicket(raiz);
+    entrada.focus();
+}
+
+/** Productos que coinciden con lo escrito (o todos, si no se escribió nada); los agotados se ven pero no se tocan. */
+function dibujarMosaico(raiz) {
+    const t = $('#caja-codigo', raiz).value.trim().replace(/^\d+\s*\*\s*/, '').toLowerCase();
+    const visibles = caja.productos.filter(p => !t || p.codigo.toLowerCase().includes(t)
+        || p.nombre.toLowerCase().includes(t) || p.categoria.toLowerCase().includes(t));
+    $('#caja-mosaico', raiz).innerHTML = visibles.length === 0
+        ? '<p class="suave">Ningún producto coincide.</p>'
+        : visibles.slice(0, 40).map(p => `
+            <button type="button" class="ficha" data-codigo="${esc(p.codigo)}" ${p.stock === 0 ? 'disabled' : ''}>
+                <span class="ficha-nombre">${esc(p.nombre)}</span>
+                <span class="ficha-codigo">${esc(p.codigo)}</span>
+                <span class="ficha-pie"><strong>${moneda(p.precio)}</strong>
+                    <span class="${p.stock === 0 ? 'agotado' : p.stockBajo ? 'pocas' : ''}">${p.stock === 0 ? 'Agotado'
+                        : entero(p.stock) + ' disp.'}</span></span>
+            </button>`).join('');
+}
+
+function mensajeCaja(raiz, texto) {
+    const m = $('#caja-mensaje', raiz);
+    m.textContent = texto;
+    m.hidden = !texto;
+}
+
+/** Por código exacto (lo que envía el lector) o, si no existe, por una única coincidencia en el nombre. */
+function agregarAlTicket(raiz, texto) {
+    texto = texto.trim();
+    if (!texto) {
+        return;
+    }
+    let cantidad = 1;
+    const conCantidad = texto.match(/^(\d{1,6})\s*\*\s*(.+)$/);
+    if (conCantidad) {
+        cantidad = Number(conCantidad[1]);
+        texto = conCantidad[2].trim();
+    }
+    const codigo = texto.toUpperCase();
+    let producto = caja.productos.find(p => p.codigo === codigo);
+    if (!producto) {
+        const t = texto.toLowerCase();
+        const coincidencias = caja.productos.filter(p => p.nombre.toLowerCase().includes(t));
+        if (coincidencias.length !== 1) {
+            mensajeCaja(raiz, coincidencias.length === 0 ? `No existe un producto con el código ${codigo}.`
+                : `${coincidencias.length} productos coinciden con "${texto}". Escriba el código o más letras del nombre.`);
+            return;
+        }
+        producto = coincidencias[0];
+    }
+    if (cantidad <= 0) {
+        mensajeCaja(raiz, 'La cantidad debe ser mayor que cero.');
+        return;
+    }
+    const linea = caja.ticket.find(l => l.codigo === producto.codigo);
+    const total = cantidad + (linea?.cantidad ?? 0);
+    if (total > producto.stock) {
+        mensajeCaja(raiz, `Stock insuficiente: hay ${entero(producto.stock)} unidades de ${producto.nombre}.`);
+        return;
+    }
+    if (linea) {
+        linea.cantidad = total;
+    } else {
+        caja.ticket.push({codigo: producto.codigo, cantidad});
+    }
+    mensajeCaja(raiz, '');
+    dibujarTicket(raiz, producto.codigo);
+    $('#caja-codigo', raiz).focus();
+}
+
+const productoDeCaja = codigo => caja.productos.find(p => p.codigo === codigo);
+const totalTicket = () => caja.ticket.reduce((suma, l) => suma + Number(productoDeCaja(l.codigo).precio) * l.cantidad, 0);
+
+function dibujarTicket(raiz, resaltar) {
+    guardarTicket();
+    const lineas = $('#caja-lineas', raiz);
+    lineas.innerHTML = caja.ticket.length === 0
+        ? '<p class="suave vacio-ticket">El ticket está vacío. Escanee o toque un producto para empezar.</p>'
+        : caja.ticket.map(l => {
+            const p = productoDeCaja(l.codigo);
+            const c = esc(l.codigo);
+            return `<div class="linea-ticket${l.codigo === resaltar ? ' recien' : ''}">
+                <div class="linea-nombre"><strong>${esc(p.nombre)}</strong>
+                    <span class="suave">${moneda(p.precio)} c/u</span></div>
+                <div class="linea-cantidad">
+                    <button type="button" class="boton chico" data-accion="menos" data-codigo="${c}" aria-label="Quitar una unidad">−</button>
+                    <span>${entero(l.cantidad)}</span>
+                    <button type="button" class="boton chico" data-accion="mas" data-codigo="${c}" aria-label="Sumar una unidad">+</button>
+                </div>
+                <strong class="num">${moneda(Number(p.precio) * l.cantidad)}</strong>
+                <button type="button" class="boton chico peligro" data-accion="quitar" data-codigo="${c}"
+                        aria-label="Quitar ${esc(p.nombre)}">×</button>
+            </div>`;
+        }).join('');
+    const unidades = caja.ticket.reduce((suma, l) => suma + l.cantidad, 0);
+    $('#caja-unidades', raiz).textContent = unidades ? `${entero(unidades)} unidad(es)` : '';
+    $('#caja-total', raiz).textContent = moneda(totalTicket());
+    const irAlTicket = $('#caja-ir-ticket', raiz);
+    irAlTicket.hidden = caja.ticket.length === 0;
+    irAlTicket.textContent = `Ver ticket · ${entero(unidades)} unid. · ${moneda(totalTicket())}`;
+    $('#caja-cobrar', raiz).disabled = $('#caja-vaciar', raiz).disabled = caja.ticket.length === 0;
+    $('.recien', lineas)?.scrollIntoView({block: 'nearest'});
+}
+
+async function cobrar() {
+    const total = totalTicket();
+    const importe = texto => Number(String(texto).replace(',', '.'));
+    let pago = null;
+    const vendidos = await dialogo({
+        titulo: 'Cobrar',
+        textoAceptar: 'Confirmar venta',
+        cuerpo: `
+            <div class="total-cobro"><span>Total a cobrar</span><strong>${moneda(total)}</strong></div>
+            <div class="rejilla-campos">
+                <label class="campo">Forma de pago<select name="metodo">
+                    ${METODOS_PAGO.map(m => `<option>${esc(m)}</option>`).join('')}</select></label>
+                ${campo('Recibido (S/)', 'recibido', {extra: 'inputmode="decimal" placeholder="Opcional"'})}
+            </div>
+            <div class="resumen-operacion" id="vuelto"></div>`,
+        alAbrir: cuerpo => {
+            const actualizar = () => {
+                const efectivo = $('[name=metodo]', cuerpo).value === 'Efectivo';
+                const recibido = $('[name=recibido]', cuerpo);
+                recibido.closest('label').hidden = !efectivo;
+                const monto = importe(recibido.value);
+                $('#vuelto', cuerpo).innerHTML = efectivo && recibido.value.trim() && monto >= total
+                    ? `<span>Vuelto: <strong>${moneda(monto - total)}</strong></span>`
+                    : `<span>${entero(caja.ticket.length)} producto(s)</span>`;
+            };
+            cuerpo.oninput = actualizar;
+            actualizar();
+        },
+        alAceptar: async v => {
+            const recibido = v.metodo === 'Efectivo' && v.recibido?.trim() ? importe(v.recibido) : null;
+            if (recibido !== null && !(recibido >= total)) {
+                throw new Error(`El monto recibido no alcanza para pagar ${moneda(total)}.`);
+            }
+            pago = {metodo: v.metodo, recibido};
+            return api('POST', '/api/ventas', {
+                lineas: caja.ticket.map(l => ({codigo: l.codigo, cantidad: String(l.cantidad)})),
+                nota: 'Caja · ' + v.metodo,
+            });
+        },
+    });
+    if (!vendidos) {
+        return;
+    }
+    // El comprobante usa los precios que devolvió el servidor, que son los que se registraron.
+    const lineas = caja.ticket.map(l => {
+        const p = vendidos.find(x => x.codigo === l.codigo);
+        return {nombre: p.nombre, cantidad: l.cantidad, precio: Number(p.precio), subtotal: Number(p.precio) * l.cantidad};
+    });
+    const comprobante = {fecha: new Date(), lineas, total: lineas.reduce((s, l) => s + l.subtotal, 0), ...pago};
+    caja.ticket = [];
+    guardarTicket();
+    vendidos.filter(p => p.stockBajo).forEach(p =>
+        aviso(`Atención: ${p.nombre} quedó con ${entero(p.stock)} unidades (mínimo ${entero(p.stockMinimo)}).`, true));
+    refrescar();
+    await dialogo({
+        titulo: 'Venta registrada',
+        textoAceptar: 'Imprimir ticket',
+        textoCancelar: 'Nueva venta',
+        cuerpo: `<div class="ticket-vista">${htmlTicket(comprobante)}</div>`,
+        alAceptar: () => imprimir(`<div class="ticket">${htmlTicket(comprobante)}</div>`),
+    });
+    $('#caja-codigo')?.focus();
+}
+
+function htmlTicket(c) {
+    const fecha = c.fecha.toLocaleString('es-PE', {dateStyle: 'short', timeStyle: 'short'});
+    return `<div class="ticket-cabecera"><strong>Comprobante de venta</strong><span>${esc(fecha)}</span>
+            <span>Atendió: ${esc(estado.usuario.nombre)}</span></div>
+        <table><tbody>${c.lineas.map(l => `<tr><td>${entero(l.cantidad)} × ${esc(l.nombre)}
+            <span class="suave">${numero(l.precio)}</span></td><td class="num">${numero(l.subtotal)}</td></tr>`).join('')}
+        </tbody><tfoot>
+            <tr class="ticket-total"><td>TOTAL</td><td class="num">${moneda(c.total)}</td></tr>
+            <tr><td>${esc(c.metodo)}</td><td class="num">${c.recibido != null ? moneda(c.recibido) : ''}</td></tr>
+            ${c.recibido != null ? `<tr><td>Vuelto</td><td class="num">${moneda(c.recibido - c.total)}</td></tr>` : ''}
+        </tfoot></table>
+        <p class="ticket-pie">¡Gracias por su compra!<br>Documento interno, no válido como comprobante de pago.</p>`;
 }
 
 // ---------- Productos ----------

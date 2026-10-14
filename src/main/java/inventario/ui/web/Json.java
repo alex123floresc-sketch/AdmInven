@@ -12,6 +12,7 @@ import inventario.modelo.Usuario;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Formato JSON de la API. Se usan registros propios en lugar de las clases del modelo para decidir
@@ -97,6 +98,13 @@ final class Json {
 
     /** {@code tipo}: ENTRADA, SALIDA o AJUSTE; en un ajuste, {@code cantidad} es el stock contado. */
     record DatosMovimiento(String tipo, String cantidad, String costo, Long proveedorId, String nota) {
+    }
+
+    /** Una línea del ticket de la caja; los códigos repetidos se suman en el servidor. */
+    record LineaTicket(String codigo, String cantidad) {
+    }
+
+    record DatosVenta(List<LineaTicket> lineas, String nota) {
     }
 
     record DatosProveedor(String nombre, String documento, String telefono, String email) {

@@ -83,6 +83,16 @@ final class Rutas {
         r.get("/api/movimientos", privada((ctx, s) ->
                 ctx.json(movimientosJson(s, s.inventario().listarMovimientos()))));
 
+        // Caja: todas las líneas del ticket se venden juntas o ninguna.
+        r.post("/api/ventas", privada((ctx, s) -> {
+            Json.DatosVenta d = ctx.bodyAsClass(Json.DatosVenta.class);
+            List<InventarioServicio.ItemVenta> items = d.lineas() == null ? List.of() : d.lineas().stream()
+                    .map(l -> new InventarioServicio.ItemVenta(l.codigo(), entero("La cantidad", l.cantidad())))
+                    .toList();
+            ctx.json(s.inventario().registrarVenta(items, d.nota()).stream()
+                    .map(p -> Json.ProductoJson.de(p, verCostos(s))).toList());
+        }));
+
         // Proveedores
         r.get("/api/proveedores", privada((ctx, s) -> ctx.json(("1".equals(ctx.queryParam("todos"))
                 ? s.proveedores().listarTodos() : s.proveedores().listarActivos())

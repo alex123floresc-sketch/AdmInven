@@ -125,6 +125,37 @@ class ServidorWebTest {
     }
 
     @Test
+    void laCajaVendeTodoElTicketONada() throws IOException {
+        Navegador vendedor = new Navegador();
+        vendedor.entrar("vendedor", "vendedor123");
+        int arroz = stock(vendedor, "ARR-5K");
+        int agua = stock(vendedor, "AGU-625");
+
+        Respuesta venta = vendedor.pedir("POST", "/api/ventas", "{\"lineas\":[{\"codigo\":\"arr-5k\",\"cantidad\":\"1\"},"
+                + "{\"codigo\":\"AGU-625\",\"cantidad\":\"2\"},{\"codigo\":\"ARR-5K\",\"cantidad\":\"1\"}],"
+                + "\"nota\":\"Caja · Efectivo\"}");
+        assertEquals(200, venta.estado());
+        assertEquals(arroz - 2, stock(vendedor, "ARR-5K"));
+        assertEquals(agua - 2, stock(vendedor, "AGU-625"));
+
+        // Si una línea no alcanza, no se vende ninguna.
+        Respuesta excesiva = vendedor.pedir("POST", "/api/ventas", "{\"lineas\":[{\"codigo\":\"ARR-5K\",\"cantidad\":\"1\"},"
+                + "{\"codigo\":\"AGU-625\",\"cantidad\":\"99999\"}]}");
+        assertEquals(400, excesiva.estado());
+        assertEquals(arroz - 2, stock(vendedor, "ARR-5K"));
+        assertEquals(400, vendedor.pedir("POST", "/api/ventas", "{\"lineas\":[]}").estado());
+    }
+
+    private static int stock(Navegador n, String codigo) throws IOException {
+        for (JsonNode p : new ObjectMapper().readTree(n.pedir("GET", "/api/productos", null).cuerpo())) {
+            if (p.get("codigo").asText().equals(codigo)) {
+                return p.get("stock").asInt();
+            }
+        }
+        throw new AssertionError("No existe " + codigo);
+    }
+
+    @Test
     void cadaNavegadorTieneSuPropiaSesion() {
         Navegador admin = new Navegador();
         Navegador vendedor = new Navegador();

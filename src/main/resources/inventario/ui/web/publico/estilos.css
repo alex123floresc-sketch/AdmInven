@@ -312,6 +312,79 @@ td.vacio { text-align: center; color: var(--texto-suave); padding: 28px; }
     flex-wrap: wrap;
 }
 
+/* Caja */
+.caja { display: grid; grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); gap: 16px; align-items: start; }
+.caja-codigo { width: 100%; font-size: 16px; padding: 10px 12px; }
+.mosaico { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ficha {
+    font: inherit;
+    color: var(--texto);
+    text-align: left;
+    background: var(--superficie-2);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    display: grid;
+    gap: 2px;
+    align-content: space-between;
+    min-height: 92px;
+}
+.ficha:hover:not(:disabled) { border-color: var(--primario); background: var(--primario-suave); }
+.ficha:disabled { opacity: .5; cursor: default; }
+.ficha-nombre { font-weight: 600; line-height: 1.25; }
+.ficha-codigo { color: var(--texto-suave); font-size: 12px; }
+.ficha-pie { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 13px; }
+.ficha-pie span { color: var(--texto-suave); font-size: 12px; }
+.ficha-pie .pocas, .ficha-pie .agotado { color: var(--aviso-texto); font-weight: 600; }
+
+.caja-ticket { position: sticky; top: 12px; }
+.lineas-ticket { display: grid; max-height: calc(100vh - 330px); min-height: 120px; overflow: auto; }
+.vacio-ticket { text-align: center; padding: 28px 8px; }
+.linea-ticket {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 84px auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--borde);
+}
+.linea-ticket.recien { animation: resaltar 1s ease-out; }
+@keyframes resaltar { from { background: var(--primario-suave); } }
+.linea-nombre { display: grid; min-width: 0; }
+.linea-nombre .suave { font-size: 12px; }
+.linea-cantidad { display: flex; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
+.linea-cantidad span { min-width: 26px; text-align: center; font-weight: 600; }
+.total-ticket, .total-cobro {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 16px;
+}
+.total-ticket strong, .total-cobro strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+.total-cobro { background: var(--superficie-2); border-radius: 8px; padding: 10px 14px; }
+.caja-botones { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.caja-botones .boton { padding: 11px; font-size: 15px; }
+.barra-cobro { display: none; }
+
+/* Ticket en pantalla y al imprimir */
+.ticket-vista { border: 1px dashed var(--borde); border-radius: 8px; padding: 14px; }
+.ticket-cabecera { display: grid; text-align: center; margin-bottom: 10px; }
+.ticket-vista table td, .ticket table td { border: 0; padding: 3px 0; }
+.ticket-vista tfoot td, .ticket tfoot td { padding-top: 2px; }
+.ticket-total td { border-top: 1px dashed var(--borde) !important; font-weight: 700; font-size: 16px; padding-top: 8px !important; }
+.ticket-pie { text-align: center; margin: 12px 0 0; font-size: 12px; color: var(--texto-suave); }
+.impresion { display: none; }
+
+@media print {
+    @page { margin: 12mm; }
+    body { background: #fff; color: #000; }
+    body > :not(.impresion) { display: none !important; }
+    .impresion { display: block; }
+    .impresion * { color: #000 !important; background: transparent !important; box-shadow: none !important; }
+    .ticket { width: 72mm; font: 12px/1.4 "Consolas", "Courier New", monospace; }
+}
+
 /* Avisos flotantes */
 .avisos { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 10; }
 .aviso {
@@ -339,6 +412,20 @@ td.vacio { text-align: center; color: var(--texto-suave); padding: 28px; }
     th, td { white-space: nowrap; padding: 8px 10px; }
     .tarjeta .valor { font-size: 20px; }
     .pestanas button { padding: 10px 10px 7px; }
+    .caja { grid-template-columns: minmax(0, 1fr); }
+    .caja-ticket { position: static; }
+    .lineas-ticket { max-height: none; min-height: 0; }
+    .linea-ticket { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .linea-nombre { grid-column: 1 / -1; }
+    .barra-cobro:not([hidden]) {
+        display: block;
+        position: sticky;
+        bottom: 12px;
+        padding: 12px;
+        font-size: 15px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+    }
+    .mosaico { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 
     /* Las tablas se leen como tarjetas: cada celda muestra el título de su columna. */
     .tabla-contenedor thead { display: none; }
