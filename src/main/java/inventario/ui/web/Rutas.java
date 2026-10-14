@@ -2,6 +2,7 @@ package inventario.ui.web;
 
 import inventario.Aplicacion;
 import inventario.modelo.Movimiento;
+import inventario.modelo.Pedido;
 import inventario.modelo.Permiso;
 import inventario.modelo.Producto;
 import inventario.modelo.TipoMovimiento;
@@ -86,12 +87,29 @@ final class Rutas {
         // Caja: todas las líneas del ticket se venden juntas o ninguna.
         r.post("/api/ventas", privada((ctx, s) -> {
             Json.DatosVenta d = ctx.bodyAsClass(Json.DatosVenta.class);
-            List<InventarioServicio.ItemVenta> items = d.lineas() == null ? List.of() : d.lineas().stream()
-                    .map(l -> new InventarioServicio.ItemVenta(l.codigo(), entero("La cantidad", l.cantidad())))
-                    .toList();
-            ctx.json(s.inventario().registrarVenta(items, d.nota()).stream()
+            ctx.json(s.inventario().registrarVenta(items(d.lineas()), d.nota()).stream()
                     .map(p -> Json.ProductoJson.de(p, verCostos(s))).toList());
         }));
+
+        // Tienda en línea: el catálogo y el envío de pedidos son públicos; atenderlos exige sesión.
+        r.get("/tienda", publica(ctx -> ctx.redirect("/tienda.html")));
+        r.get("/api/catalogo", publica(ctx -> ctx.json(servidor.serviciosSinSesion().inventario().listarProductos()
+                .stream().map(Json.CatalogoJson::de).toList())));
+        r.post("/api/pedidos", publica(ctx -> {
+            Json.DatosPedido d = ctx.bodyAsClass(Json.DatosPedido.class);
+            servidor.verificarPedidosRecientes(ctx);
+            Pedido p = servidor.serviciosSinSesion().pedidos().registrar(d.cliente(), d.telefono(), d.nota(),
+                    items(d.lineas()));
+            servidor.registrarPedido(ctx);
+            ctx.status(HttpStatus.CREATED).json(new Json.PedidoRecibido(p.id(), p.total()));
+        }));
+        r.get("/api/pedidos", privada((ctx, s) ->
+                ctx.json(s.pedidos().listar().stream().map(Json.PedidoJson::de).toList())));
+        r.get("/api/pedidos/pendientes", privada((ctx, s) -> ctx.json(Map.of("cantidad", s.pedidos().pendientes()))));
+        r.post("/api/pedidos/{id}/atender", privada((ctx, s) ->
+                ctx.json(Json.PedidoJson.de(s.pedidos().atender(id(ctx))))));
+        r.post("/api/pedidos/{id}/cancelar", privada((ctx, s) ->
+                ctx.json(Json.PedidoJson.de(s.pedidos().cancelar(id(ctx))))));
 
         // Proveedores
         r.get("/api/proveedores", privada((ctx, s) -> ctx.json(("1".equals(ctx.queryParam("todos"))
@@ -357,6 +375,12 @@ final class Rutas {
     /** Ruta que exige sesión; recibe los servicios de quien hace la petición. */
     private Handler privada(BiConsumer<Context, Aplicacion.Servicios> manejador) {
         return servidor.exclusivo(ctx -> manejador.accept(ctx, servidor.servicios(ctx)));
+    }
+
+    private static List<InventarioServicio.ItemVenta> items(List<Json.LineaTicket> lineas) {
+        return lineas == null ? List.of() : lineas.stream()
+                .map(l -> new InventarioServicio.ItemVenta(l.codigo(), entero("La cantidad", l.cantidad())))
+                .toList();
     }
 
     private static boolean verCostos(Aplicacion.Servicios s) {

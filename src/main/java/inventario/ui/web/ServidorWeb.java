@@ -16,11 +16,13 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Deque;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,6 +42,8 @@ public final class ServidorWeb implements AutoCloseable {
     private static final Duration INACTIVIDAD_MAXIMA = Duration.ofHours(8);
     private static final int INTENTOS_FALLIDOS_MAXIMOS = 5;
     private static final Duration BLOQUEO_POR_INTENTOS = Duration.ofMinutes(2);
+    private static final int PEDIDOS_POR_VENTANA = 5;
+    private static final Duration VENTANA_PEDIDOS = Duration.ofMinutes(10);
     private static final Set<String> METODOS_QUE_CAMBIAN = Set.of("POST", "PUT", "PATCH", "DELETE");
     private static final Logger REGISTRO = Logger.getLogger(ServidorWeb.class.getName());
     private static final SecureRandom AZAR = new SecureRandom();
@@ -60,6 +64,7 @@ public final class ServidorWeb implements AutoCloseable {
     private final Aplicacion app;
     private final Map<String, SesionWeb> sesiones = new ConcurrentHashMap<>();
     private final Map<String, Intentos> intentos = new ConcurrentHashMap<>();
+    private final Map<String, Deque<Instant>> pedidosPorDireccion = new ConcurrentHashMap<>();
     private final ReentrantLock candado = new ReentrantLock(true);
     private final Javalin javalin;
 
@@ -194,6 +199,24 @@ public final class ServidorWeb implements AutoCloseable {
                     ? new Intentos(0, Instant.now().plus(BLOQUEO_POR_INTENTOS))
                     : new Intentos(fallidos, null);
         });
+    }
+
+    // ---- Pedidos de la tienda ----
+
+    /** Un visitante puede enviar pocos pedidos seguidos: evita que alguien llene la lista con pedidos falsos. */
+    void verificarPedidosRecientes(Context ctx) {
+        Instant limite = Instant.now().minus(VENTANA_PEDIDOS);
+        Deque<Instant> recientes = pedidosPorDireccion.get(ctx.ip());
+        if (recientes != null) {
+            recientes.removeIf(i -> i.isBefore(limite));
+            if (recientes.size() >= PEDIDOS_POR_VENTANA) {
+                throw new InventarioException("Ya envió varios pedidos hace poco. Espere unos minutos o llámenos.");
+            }
+        }
+    }
+
+    void registrarPedido(Context ctx) {
+        pedidosPorDireccion.computeIfAbsent(ctx.ip(), k -> new ConcurrentLinkedDeque<>()).add(Instant.now());
     }
 
     private static String claveIntentos(Context ctx, String usuario) {

@@ -4,94 +4,22 @@
  * y los permisos se verifican en el servidor, aquí solo se ocultan las acciones que el rol no permite.
  */
 
-// ---------- Utilidades ----------
-
-const $ = (selector, raiz = document) => raiz.querySelector(selector);
-const $$ = (selector, raiz = document) => [...raiz.querySelectorAll(selector)];
-
-/** Escapa texto para insertarlo en HTML (evita que un nombre de producto inyecte código). */
-function esc(valor) {
-    return String(valor ?? '').replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[c]);
-}
-
-const formatoImporte = new Intl.NumberFormat('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-const formatoEntero = new Intl.NumberFormat('es-PE');
-const numero = v => v == null ? '—' : formatoImporte.format(Number(v));
-const moneda = v => v == null ? '—' : 'S/ ' + formatoImporte.format(Number(v));
-const entero = v => formatoEntero.format(Number(v));
-const formatoPorcentaje = new Intl.NumberFormat('es-PE', {minimumFractionDigits: 1, maximumFractionDigits: 1});
-const porcentaje = v => v == null ? '—' : formatoPorcentaje.format(Number(v)) + ' %';
-
-function fechaHora(iso) {
-    const [fecha, hora] = iso.split('T');
-    return fecha.split('-').reverse().join('/') + ' ' + hora.slice(0, 5);
-}
-
-const fechaCorta = iso => iso ? iso.split('-').reverse().join('/') : '—';
-
-function hoyIso(desplazamientoDias = 0) {
-    const d = new Date();
-    d.setDate(d.getDate() + desplazamientoDias);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/** Íconos de trazo (24×24) para pestañas y botones; toman el color del texto. */
-const ICONOS = {
-    resumen: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>'
-        + '<rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
-    productos: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
-    caja: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>'
-        + '<path d="M2 3h3l2.7 12.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.2L21 7H6"/>',
-    movimientos: '<path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/>',
-    proveedores: '<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
-    reportes: '<path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/>',
-    usuarios: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
-    sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2'
-        + 'M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-    luna: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
-};
-
-const icono = nombre => `<svg class="icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[nombre]}</svg>`;
+// ---------- Comunicación con el servidor ----------
 
 const NOMBRES_TIPO = {ENTRADA: 'Compra', SALIDA: 'Venta', AJUSTE: 'Ajuste'};
 
-// ---------- Comunicación con el servidor ----------
-
-class ErrorApi extends Error {
-    constructor(mensaje, estado) {
-        super(mensaje);
-        this.estado = estado;
-    }
-}
-
+/** Como {@code llamarApi}, pero si la sesión venció vuelve a la pantalla de acceso. */
 async function api(metodo, url, cuerpo) {
-    const opciones = {method: metodo, headers: {'X-Inventario': '1'}, credentials: 'same-origin'};
-    if (cuerpo !== undefined) {
-        opciones.headers['Content-Type'] = 'application/json';
-        opciones.body = JSON.stringify(cuerpo);
-    }
-    let respuesta;
     try {
-        respuesta = await fetch(url, opciones);
-    } catch {
-        throw new ErrorApi('No se pudo conectar con el servidor. Revise su conexión.', 0);
+        return await llamarApi(metodo, url, cuerpo);
+    } catch (e) {
+        if (e.estado === 401 && url !== '/api/sesion') {
+            estado.usuario = null;
+            mostrarAcceso(false);
+            throw new ErrorApi('Su sesión terminó. Vuelva a iniciar sesión.', 401);
+        }
+        throw e;
     }
-    if (respuesta.status === 401 && url !== '/api/sesion') {
-        estado.usuario = null;
-        mostrarAcceso(false);
-        throw new ErrorApi('Su sesión terminó. Vuelva a iniciar sesión.', 401);
-    }
-    if (respuesta.status === 204) {
-        return null;
-    }
-    const datos = await respuesta.json().catch(() => null);
-    if (!respuesta.ok) {
-        throw new ErrorApi(datos?.error ?? `Error ${respuesta.status}`, respuesta.status);
-    }
-    return datos;
 }
 
 // ---------- Estado general ----------
@@ -105,14 +33,6 @@ const estado = {
 
 const puede = permiso => estado.usuario?.permisos.includes(permiso) ?? false;
 
-function aviso(mensaje, error = false) {
-    const el = document.createElement('div');
-    el.className = 'aviso' + (error ? ' error' : '');
-    el.textContent = mensaje;
-    $('#avisos').append(el);
-    setTimeout(() => el.remove(), error ? 6000 : 3500);
-}
-
 /** Ejecuta una acción y muestra su error como aviso (para botones fuera de diálogos). */
 async function intentar(accion) {
     try {
@@ -122,50 +42,6 @@ async function intentar(accion) {
             aviso(e.message, true);
         }
     }
-}
-
-// ---------- Tema claro u oscuro ----------
-
-/** localStorage puede no estar disponible (navegación privada): entonces el tema simplemente no se recuerda. */
-function leerPreferencia(clave) {
-    try {
-        return localStorage.getItem(clave);
-    } catch {
-        return null;
-    }
-}
-
-function guardarPreferencia(clave, valor) {
-    try {
-        localStorage.setItem(clave, valor);
-    } catch {
-        // Sin almacenamiento: la preferencia dura hasta cerrar la página.
-    }
-}
-
-const temaDelSistema = matchMedia('(prefers-color-scheme: dark)');
-const temaActual = () => document.documentElement.dataset.tema ?? (temaDelSistema.matches ? 'oscuro' : 'claro');
-
-function aplicarTema(tema) {
-    if (tema === 'claro' || tema === 'oscuro') {
-        document.documentElement.dataset.tema = tema;
-    }
-    const oscuro = temaActual() === 'oscuro';
-    $$('.boton-tema').forEach(b => {
-        b.innerHTML = icono(oscuro ? 'sol' : 'luna');
-        b.title = oscuro ? 'Usar tema claro' : 'Usar tema oscuro';
-        b.setAttribute('aria-label', b.title);
-    });
-}
-
-function iniciarTema() {
-    aplicarTema(leerPreferencia('tema'));
-    temaDelSistema.onchange = () => aplicarTema();
-    $$('.boton-tema').forEach(b => b.onclick = () => {
-        const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
-        guardarPreferencia('tema', nuevo);
-        aplicarTema(nuevo);
-    });
 }
 
 // ---------- Diálogo genérico ----------
@@ -376,6 +252,7 @@ function entrar(usuario) {
     dibujarPestanas();
     const guardada = location.hash.slice(1);
     irA(PESTANAS.some(p => p.id === guardada && p.visible()) ? guardada : 'resumen');
+    vigilarPedidos();
 }
 
 async function cambiarMiContrasena() {
@@ -402,6 +279,7 @@ async function cambiarMiContrasena() {
 const PESTANAS = [
     {id: 'resumen', titulo: 'Resumen', visible: () => true, dibujar: dibujarResumen},
     {id: 'caja', titulo: 'Caja', visible: () => puede('REGISTRAR_VENTAS'), dibujar: dibujarCaja},
+    {id: 'pedidos', titulo: 'Pedidos', visible: () => puede('REGISTRAR_VENTAS'), dibujar: dibujarPedidos},
     {id: 'productos', titulo: 'Productos', visible: () => true, dibujar: dibujarProductos},
     {id: 'movimientos', titulo: 'Movimientos', visible: () => true, dibujar: dibujarMovimientos},
     {id: 'proveedores', titulo: 'Proveedores', visible: () => puede('GESTIONAR_PROVEEDORES'), dibujar: dibujarProveedores},
@@ -411,7 +289,8 @@ const PESTANAS = [
 
 function dibujarPestanas() {
     $('#pestanas').innerHTML = PESTANAS.filter(p => p.visible()).map(p =>
-        `<button type="button" role="tab" data-id="${p.id}">${icono(p.id)}<span>${p.titulo}</span></button>`).join('');
+        `<button type="button" role="tab" data-id="${p.id}">${icono(p.id)}<span>${p.titulo}</span>${p.id === 'pedidos'
+            ? '<span id="pendientes" class="contador-pestana" hidden></span>' : ''}</button>`).join('');
     $$('#pestanas button').forEach(b => b.onclick = () => irA(b.dataset.id));
 }
 
@@ -957,6 +836,128 @@ async function historialProducto(p) {
             {titulo: 'Nota', valor: m => m.nota}], movimientos, {vacio: 'Sin movimientos registrados.'});
         await hecho;
     });
+}
+
+// ---------- Pedidos de la tienda en línea ----------
+
+const pedidos = {filtro: 'PENDIENTE', pendientes: null, temporizador: null};
+const ESTADOS_PEDIDO = {PENDIENTE: 'Pendientes', ATENDIDO: 'Atendidos', CANCELADO: 'Cancelados', '': 'Todos'};
+
+/** Revisa cada medio minuto si llegaron pedidos nuevos y lo indica en la pestaña. */
+function vigilarPedidos() {
+    clearInterval(pedidos.temporizador);
+    pedidos.pendientes = null;
+    if (!puede('REGISTRAR_VENTAS')) {
+        return;
+    }
+    actualizarPendientes();
+    pedidos.temporizador = setInterval(actualizarPendientes, 30000);
+}
+
+async function actualizarPendientes() {
+    if (!estado.usuario) {
+        clearInterval(pedidos.temporizador);
+        return;
+    }
+    try {
+        const {cantidad} = await api('GET', '/api/pedidos/pendientes');
+        if (pedidos.pendientes !== null && cantidad > pedidos.pendientes) {
+            aviso(cantidad - pedidos.pendientes === 1 ? 'Llegó un pedido nuevo de la tienda en línea.'
+                : `Llegaron ${cantidad - pedidos.pendientes} pedidos nuevos de la tienda en línea.`);
+            if (estado.pestana === 'pedidos' && !$('#dialogo').open) {
+                refrescar();
+            }
+        }
+        pedidos.pendientes = cantidad;
+        mostrarPendientes(cantidad);
+    } catch {
+        // Sin conexión: se reintenta en la próxima vuelta.
+    }
+}
+
+function mostrarPendientes(cantidad) {
+    const contador = $('#pendientes');
+    if (contador) {
+        contador.hidden = cantidad === 0;
+        contador.textContent = entero(cantidad);
+    }
+}
+
+/** Enlace de WhatsApp: los celulares peruanos de 9 dígitos se completan con el código de país 51. */
+function enlaceWhatsapp(telefono) {
+    const digitos = telefono.replace(/\D/g, '');
+    return 'https://wa.me/' + (/^9\d{8}$/.test(digitos) ? '51' + digitos : digitos);
+}
+
+async function dibujarPedidos(raiz) {
+    const todos = await api('GET', '/api/pedidos');
+    pedidos.pendientes = todos.filter(p => p.estado === 'PENDIENTE').length;
+    mostrarPendientes(pedidos.pendientes);
+    const cuenta = e => todos.filter(p => !e || p.estado === e).length;
+    raiz.innerHTML = `
+        <div class="barra">
+            <nav class="chips" aria-label="Estado">${Object.entries(ESTADOS_PEDIDO).map(([e, nombre]) =>
+                `<button type="button" class="chip" data-estado="${e}" aria-pressed="${e === pedidos.filtro}">
+                    ${nombre} (${entero(cuenta(e))})</button>`).join('')}</nav>
+            <span class="espacio"></span>
+            <a class="boton" href="tienda.html" target="_blank" rel="noopener">Ver la tienda</a>
+        </div>
+        <section id="lista-pedidos" class="lista-pedidos"></section>`;
+    const visibles = todos.filter(p => !pedidos.filtro || p.estado === pedidos.filtro);
+    $('#lista-pedidos', raiz).innerHTML = visibles.length === 0
+        ? `<p class="suave panel vacio-pedidos">${pedidos.filtro === 'PENDIENTE'
+            ? 'No hay pedidos pendientes. Los que hagan los clientes en la tienda en línea aparecerán aquí.'
+            : 'No hay pedidos en esta lista.'}</p>`
+        : visibles.map(p => `<article class="panel pedido estado-${p.estado}">
+            <div class="panel-cabecera">
+                <h3>Pedido N.° ${entero(p.id)} <span class="etiqueta-estado">${esc(p.estadoNombre)}</span></h3>
+                <span class="suave">${esc(fechaHora(p.fecha))}</span>
+            </div>
+            <div class="pedido-cliente">
+                <strong>${esc(p.cliente)}</strong>
+                <a href="tel:${esc(p.telefono.replace(/\s/g, ''))}">${esc(p.telefono)}</a>
+                <a href="${esc(enlaceWhatsapp(p.telefono))}" target="_blank" rel="noopener">WhatsApp</a>
+            </div>
+            ${p.nota ? `<p class="pedido-nota">${esc(p.nota)}</p>` : ''}
+            <table class="tabla-pedido"><tbody>${p.lineas.map(l => `<tr>
+                <td>${entero(l.cantidad)} × ${esc(l.nombre)} <span class="suave">${esc(l.codigo)}</span></td>
+                <td class="num">${numero(l.subtotal)}</td></tr>`).join('')}</tbody>
+                <tfoot><tr><td>Total</td><td class="num">${moneda(p.total)}</td></tr></tfoot></table>
+            ${p.estado === 'PENDIENTE' ? `<div class="pedido-acciones">
+                <button type="button" class="boton peligro" data-accion="cancelar" data-id="${p.id}">Cancelar pedido</button>
+                <button type="button" class="boton primario" data-accion="atender" data-id="${p.id}">Entregar y cobrar</button>
+            </div>` : `<p class="suave">${esc(p.estadoNombre)} por ${esc(p.atendidoPor)} el ${esc(fechaHora(p.fechaAtencion))}</p>`}
+        </article>`).join('');
+
+    $$('.chip', raiz).forEach(b => b.onclick = () => {
+        pedidos.filtro = b.dataset.estado;
+        refrescar();
+    });
+    $('#lista-pedidos', raiz).onclick = e => {
+        const b = e.target.closest('button[data-accion]');
+        if (!b) {
+            return;
+        }
+        const p = todos.find(x => x.id === Number(b.dataset.id));
+        intentar(async () => {
+            if (b.dataset.accion === 'atender') {
+                if (!await confirmar('Entregar y cobrar', `Se registrará la venta del pedido N.° ${p.id} de `
+                    + `${p.cliente} (a los precios actuales) y se descontará el stock.`, 'Registrar venta')) {
+                    return;
+                }
+                await api('POST', `/api/pedidos/${p.id}/atender`);
+                aviso(`Pedido N.° ${p.id} entregado: venta registrada.`);
+            } else {
+                if (!await confirmar('Cancelar pedido', `¿Cancelar el pedido N.° ${p.id} de ${p.cliente}? `
+                    + 'Avísele al cliente por teléfono.', 'Cancelar pedido')) {
+                    return;
+                }
+                await api('POST', `/api/pedidos/${p.id}/cancelar`);
+                aviso(`Pedido N.° ${p.id} cancelado.`);
+            }
+            refrescar();
+        });
+    };
 }
 
 // ---------- Movimientos ----------

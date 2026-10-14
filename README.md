@@ -5,7 +5,8 @@ ventas, proveedores, reportes de ganancia y usuarios con roles.
 Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mismos datos y las mismas reglas:
 
 - **Escritorio:** ventana JavaFX, instalable como programa de Windows que se abre con un clic.
-- **Web:** servidor Javalin y una página que se usa desde el navegador (PC o teléfono).
+- **Web:** servidor Javalin y una página que se usa desde el navegador (PC o teléfono), con tema claro u
+  oscuro, caja para el mostrador y una **tienda en línea** donde los clientes hacen pedidos.
 - **Consola:** menú de texto con productos, stock, proveedores, reportes (y exportación CSV), usuarios y copias de seguridad.
 
 ![Resumen](docs/capturas/resumen.png)
@@ -17,9 +18,12 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 | Productos | Alta, edición, baja lógica y reactivación; búsqueda y filtro por categoría; precio, costo y margen; importar y exportar CSV |
 | Stock | Compras (con proveedor y costo), ventas, ajustes por conteo físico; costo promedio ponderado; historial por producto |
 | Venta rápida | Pestaña para el mostrador: cada lectura del lector de código de barras (o el código escrito + Enter) suma al ticket; `3*CÓDIGO` agrega varias unidades; «Cobrar» registra todo el ticket junto o nada |
+| Caja web | Lo mismo en el navegador: mosaico de productos para tocar, forma de pago, vuelto en efectivo y comprobante imprimible |
+| Tienda en línea | Página pública (`/tienda`) con el catálogo: precios y disponibilidad (nunca costos ni stock exacto), búsqueda, categorías y un pedido que el cliente envía con su nombre y teléfono para recoger en tienda |
+| Pedidos | Pestaña del personal con los pedidos de la tienda (aviso cuando llega uno nuevo, enlace a WhatsApp); «Entregar y cobrar» registra la venta o se cancela |
 | Alertas | Productos en o por debajo del stock mínimo resaltados en rojo y listados en el Resumen |
 | Proveedores | Registro con validación de RUC/DNI y correo; baja lógica |
-| Reportes | Ventas, costo, ganancia y margen por período; gráfico diario; más vendidos; productos sin rotación; compras por proveedor; exportación a CSV (Excel) e impresión o PDF («Imprimir…» → «Microsoft Print to PDF») |
+| Reportes | Ventas, costo, ganancia y margen por período; gráfico diario; más vendidos; productos sin rotación; compras por proveedor; exportación a CSV (Excel) e impresión o PDF («Imprimir…» → «Microsoft Print to PDF»; en la web, «Imprimir / PDF») |
 | Usuarios | Inicio de sesión, roles Administrador y Vendedor, cambio y restablecimiento de contraseña |
 | Auditoría | Cada movimiento guarda fecha, usuario, cantidades, precio y costo |
 | Datos | Base SQLite con migraciones automáticas y transacciones; importa los CSV de versiones anteriores |
@@ -31,7 +35,7 @@ Hecha en Java 26 con JavaFX, SQLite y Maven. Funciona de tres formas, con los mi
 | Permiso | Administrador | Vendedor |
 | --- | :---: | :---: |
 | Consultar productos y movimientos | ✔ | ✔ |
-| Registrar ventas | ✔ | ✔ |
+| Registrar ventas y atender pedidos de la tienda | ✔ | ✔ |
 | Registrar compras y ajustes | ✔ | |
 | Gestionar productos y proveedores | ✔ | |
 | Ver reportes, costos y márgenes | ✔ | |
@@ -137,6 +141,8 @@ docker run -p 7070:7070 -v inventario-datos:/datos inventario
 - Los cambios exigen la cabecera `X-Inventario`, que un formulario de otro sitio no puede enviar (CSRF).
 - Si un administrador desactiva a un usuario o le cambia el rol, se aplica en su sesión abierta al instante.
 - A quien no puede ver reportes nunca se le envían costos ni márgenes, aunque consulte la API directamente.
+- La tienda (`/api/catalogo`, `POST /api/pedidos`) es pública pero no muestra costos ni stock exacto, y cada
+  dirección puede enviar a lo sumo 5 pedidos cada 10 minutos. Los pedidos solo los ve el personal.
 - Cabeceras `Content-Security-Policy`, `X-Frame-Options` y `nosniff`; todo texto se escapa antes de mostrarse.
 
 ## Arquitectura
@@ -147,7 +153,7 @@ flowchart LR
     S --> R["persistencia<br/>interfaces de repositorio"]
     R --> DB["sqlite/<br/>SQLite + migraciones"]
     R --> CSV["CSV<br/>importar y exportar"]
-    S --> M["modelo<br/>Producto, Movimiento, Proveedor, Usuario"]
+    S --> M["modelo<br/>Producto, Movimiento, Proveedor, Usuario, Pedido"]
 ```
 
 ```
@@ -155,17 +161,18 @@ src/main/java/inventario/
 ├── Main.java, Opciones.java   Punto de entrada y argumentos
 ├── Aplicacion.java            Arma la aplicación: base de datos, sesión y servicios
 ├── DatosDemo.java             Datos de ejemplo (--demo)
-├── modelo/                    Producto, Movimiento, Proveedor, Usuario, Rol, Permiso
+├── modelo/                    Producto, Movimiento, Proveedor, Usuario, Rol, Permiso, Pedido
 ├── persistencia/              Interfaces de repositorio, CSV (importar/exportar), Transacciones
 │   └── sqlite/                BaseDeDatos, Migraciones y repositorios SQLite
 ├── servicio/                  InventarioServicio, ProveedorServicio, ReporteServicio,
-│                              UsuarioServicio, Sesion, Contrasenas
+│                              UsuarioServicio, PedidoServicio, Sesion, Contrasenas
 └── ui/                        MenuConsola, fx/ (ventana, pestañas y diálogos)
                                y web/ (ServidorWeb, Rutas de la API, Json)
 src/main/resources/
-├── db/V1.sql … V3.sql         Scripts de migración del esquema
+├── db/V1.sql … V4.sql         Scripts de migración del esquema
 ├── inventario/ui/fx/          estilos.css e icono.png de la ventana
-└── inventario/ui/web/publico/ Página web: index.html, app.js, estilos.css, icono.svg
+└── inventario/ui/web/publico/ Página del personal (index.html, app.js), tienda (tienda.html, tienda.js),
+                               comun.js (utilidades de ambas), estilos.css e icono.svg
 empaquetado/                   Script de jpackage, ícono .ico y su generador
 Dockerfile                     Imagen de la versión web para publicarla en línea
 ```
@@ -191,6 +198,7 @@ erDiagram
     PRODUCTO ||--o{ MOVIMIENTO : "tiene"
     PROVEEDOR |o--o{ MOVIMIENTO : "abastece (compras)"
     USUARIO ||--o{ MOVIMIENTO : "registra"
+    PEDIDO ||--|{ PEDIDO_LINEA : "contiene"
     PRODUCTO {
         text codigo PK
         text nombre
@@ -229,20 +237,40 @@ erDiagram
         text contrasena "hash PBKDF2"
         int activo
     }
+    PEDIDO {
+        int id PK
+        text fecha
+        text cliente
+        text telefono
+        text nota
+        text estado "PENDIENTE, ATENDIDO, CANCELADO"
+        text atendido_por
+        text fecha_atencion
+    }
+    PEDIDO_LINEA {
+        int pedido_id PK
+        int orden PK
+        text codigo_producto
+        text nombre
+        int cantidad
+        text precio
+    }
 ```
 
 ## Pruebas
 
-128 pruebas JUnit 5 (`./mvnw test`) cubren:
+141 pruebas JUnit 5 (`./mvnw test`) cubren:
 
 - reglas de stock, costos y márgenes;
 - permisos por rol;
 - contraseñas;
 - reportes;
+- pedidos de la tienda: validación, stock, permisos y atención como venta;
 - importación y exportación;
 - repositorios CSV y SQLite, incluidas transacciones, claves foráneas y migraciones;
 - copias de seguridad con la base abierta;
-- la API web de punta a punta: sesiones por navegador, permisos, costos ocultos y protección CSRF.
+- la API web de punta a punta: sesiones por navegador, permisos, costos ocultos, protección CSRF, la caja,
+  el catálogo público y el límite de pedidos.
 
 ## Capturas
 
@@ -261,3 +289,11 @@ erDiagram
 | Web: reportes | Web: registrar venta |
 | --- | --- |
 | ![Reportes web](docs/capturas/web-reportes.png) | ![Venta web](docs/capturas/web-venta.png) |
+
+| Web: tienda en línea (clientes) | Web: pedidos (personal) |
+| --- | --- |
+| ![Tienda](docs/capturas/web-tienda.png) | ![Pedidos](docs/capturas/web-pedidos.png) |
+
+| Web: caja |
+| --- |
+| ![Caja web](docs/capturas/web-caja.png) |

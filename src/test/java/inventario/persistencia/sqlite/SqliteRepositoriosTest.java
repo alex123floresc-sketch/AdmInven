@@ -1,6 +1,8 @@
 package inventario.persistencia.sqlite;
 
+import inventario.modelo.EstadoPedido;
 import inventario.modelo.Movimiento;
+import inventario.modelo.Pedido;
 import inventario.modelo.Producto;
 import inventario.modelo.Proveedor;
 import inventario.modelo.Rol;
@@ -40,6 +42,33 @@ class SqliteRepositoriosTest {
     @AfterEach
     void cerrar() {
         bd.close();
+    }
+
+    @Test
+    void pedidosSeGuardanConSusLineasYCambianDeEstado() {
+        SqlitePedidoRepositorio pedidos = new SqlitePedidoRepositorio(bd);
+        LocalDateTime fecha = LocalDateTime.of(2026, 10, 14, 18, 30, 5);
+        Pedido nuevo = new Pedido(null, fecha, "Rosa Mamani", "987654321", "Sin bolsa", List.of(
+                new Pedido.LineaPedido("ARR-5K", "Arroz 5 kg", 2, new BigDecimal("21.90")),
+                new Pedido.LineaPedido("AGU-625", "Agua 625 ml", 1, new BigDecimal("1.50"))),
+                EstadoPedido.PENDIENTE, "", null);
+
+        Pedido guardado = bd.ejecutar(() -> pedidos.guardar(nuevo));
+        pedidos.guardar(new Pedido(null, fecha.plusHours(1), "Juan", "999111222", "", List.of(
+                new Pedido.LineaPedido("AGU-625", "Agua 625 ml", 6, new BigDecimal("1.50"))),
+                EstadoPedido.PENDIENTE, "", null));
+        pedidos.guardar(guardado.cerrado(EstadoPedido.ATENDIDO, "luis", fecha.plusMinutes(10)));
+
+        Pedido leido = pedidos.buscarPorId(guardado.id()).orElseThrow();
+        assertEquals(guardado.lineas(), leido.lineas());
+        assertEquals(new BigDecimal("45.30"), leido.total());
+        assertEquals(EstadoPedido.ATENDIDO, leido.estado());
+        assertEquals("luis", leido.atendidoPor());
+        assertEquals(fecha.plusMinutes(10), leido.fechaAtencion());
+        List<Pedido> todos = pedidos.listar();
+        assertEquals(List.of("Juan", "Rosa Mamani"), todos.stream().map(Pedido::cliente).toList());
+        assertEquals(1, todos.getFirst().lineas().size());
+        assertEquals(2, todos.getLast().lineas().size());
     }
 
     @Test

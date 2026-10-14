@@ -151,6 +151,8 @@ label.casilla { display: inline-flex; gap: 6px; align-items: center; cursor: poi
     font-size: 13px;
 }
 
+.enlace-tienda { text-align: center; font-size: 13px; color: var(--primario); }
+
 /* Encabezado y pestañas */
 .encabezado {
     background: var(--encabezado);
@@ -367,6 +369,134 @@ td.vacio { text-align: center; color: var(--texto-suave); padding: 28px; }
 .caja-botones .boton { padding: 11px; font-size: 15px; }
 .barra-cobro { display: none; }
 
+/* Pedidos (personal) */
+.contador-pestana {
+    background: var(--peligro);
+    color: #fff;
+    border-radius: 99px;
+    min-width: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+}
+.lista-pedidos { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+.vacio-pedidos { grid-column: 1 / -1; text-align: center; padding: 32px; }
+.pedido { border-top: 4px solid var(--primario); }
+.pedido.estado-ATENDIDO { border-top-color: var(--exito); }
+.pedido.estado-CANCELADO { border-top-color: var(--texto-suave); opacity: .8; }
+.etiqueta-estado {
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 99px;
+    padding: 2px 8px;
+    margin-left: 4px;
+    background: var(--primario-suave);
+    color: var(--primario);
+    vertical-align: middle;
+}
+.estado-ATENDIDO .etiqueta-estado { color: var(--exito); }
+.estado-CANCELADO .etiqueta-estado { color: var(--texto-suave); }
+.pedido-cliente { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.pedido-cliente a { color: var(--primario); }
+.pedido-nota { margin: 0; background: var(--superficie-2); border-radius: 7px; padding: 8px 10px; font-style: italic; }
+.tabla-pedido td { padding: 5px 0; }
+.tabla-pedido tfoot td { font-weight: 700; font-size: 15px; border-bottom: 0; }
+.pedido-acciones { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+/* Tienda para clientes */
+.tienda-encabezado { position: sticky; top: 0; z-index: 5; }
+a.marca { color: inherit; text-decoration: none; }
+.boton-carrito { display: inline-flex; gap: 8px; align-items: center; position: relative; }
+.boton-carrito.salto { animation: salto .35s ease-out; }
+@keyframes salto { 40% { transform: scale(1.12); } }
+.contador {
+    background: #fff;
+    color: var(--primario);
+    border-radius: 99px;
+    min-width: 22px;
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.portada { padding: 8px 0 4px; display: grid; gap: 4px; }
+.portada h1 { font-size: 24px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+    font: inherit;
+    font-size: 13px;
+    border: 1px solid var(--borde);
+    background: var(--superficie);
+    color: var(--texto);
+    border-radius: 99px;
+    padding: 5px 14px;
+    cursor: pointer;
+}
+.chip:hover { border-color: var(--primario); }
+.chip[aria-pressed="true"] { background: var(--primario); border-color: var(--primario); color: #fff; font-weight: 600; }
+.catalogo { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.producto-tienda {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+    grid-template-rows: auto 1fr auto;
+}
+.producto-tienda.agotado .producto-imagen { filter: grayscale(1); opacity: .5; }
+.producto-imagen {
+    aspect-ratio: 16 / 10;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.tono-0 { background: #e3ecff; color: #2458d6; }
+.tono-1 { background: #def5e8; color: #1c7f4d; }
+.tono-2 { background: #fff0d9; color: #a85d00; }
+.tono-3 { background: #fbe4ef; color: #b0306b; }
+.tono-4 { background: #ece6fd; color: #6941c6; }
+.tono-5 { background: #dff4f7; color: #0e7490; }
+:root[data-tema="oscuro"] .producto-imagen { filter: brightness(.75) saturate(1.2); }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) .producto-imagen { filter: brightness(.75) saturate(1.2); }
+}
+.producto-datos { display: grid; gap: 2px; align-content: start; }
+.producto-categoria { color: var(--texto-suave); font-size: 12px; }
+.producto-datos h3 { font-size: 15px; }
+.producto-pie { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; }
+.precio { font-size: 18px; font-variant-numeric: tabular-nums; }
+.disponibilidad { font-size: 12px; font-weight: 600; color: var(--exito); }
+.disp-POCAS { color: #b45309; }
+.disp-AGOTADO { color: var(--texto-suave); }
+.selector-cantidad { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; text-align: center; }
+.selector-cantidad span { font-size: 13px; font-weight: 600; }
+
+.panel-lateral {
+    margin: 0 0 0 auto;
+    height: 100vh;
+    max-height: none;
+    width: min(440px, 100vw);
+    max-width: 100vw;
+    border-radius: 0;
+    border-width: 0 0 0 1px;
+}
+.panel-lateral[open] { animation: deslizar .2s ease-out; }
+@keyframes deslizar { from { transform: translateX(40px); opacity: 0; } }
+.carrito { padding: 20px; display: grid; gap: 14px; align-content: start; min-height: 100%; }
+.carrito .lineas-ticket { max-height: none; min-height: 0; }
+.carrito-datos { display: grid; gap: 12px; }
+.carrito textarea { resize: vertical; }
+.pie-carrito { font-size: 12px; text-align: center; }
+.pedido-enviado { text-align: center; display: grid; gap: 6px; padding: 24px 8px; }
+.pedido-enviado h3 { font-size: 20px; color: var(--exito); }
+.pedido-enviado p { margin: 0; }
+
 /* Ticket en pantalla y al imprimir */
 .ticket-vista { border: 1px dashed var(--borde); border-radius: 8px; padding: 14px; }
 .ticket-cabecera { display: grid; text-align: center; margin-bottom: 10px; }
@@ -429,6 +559,16 @@ td.vacio { text-align: center; color: var(--texto-suave); padding: 28px; }
     .tarjeta .valor { font-size: 20px; }
     .pestanas button { padding: 10px 10px 7px; }
     .caja { grid-template-columns: minmax(0, 1fr); }
+    .catalogo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .producto-tienda { padding: 10px; }
+    .producto-imagen { font-size: 26px; }
+    .precio { font-size: 16px; }
+    .producto-pie { flex-wrap: wrap; }
+    .portada h1 { font-size: 20px; }
+    .tienda-encabezado .encabezado-titulo { display: none; }
+    .boton-carrito { padding: 7px 10px; }
+    .texto-largo { display: none; }
+    .lista-pedidos { grid-template-columns: minmax(0, 1fr); }
     .caja-ticket { position: static; }
     .lineas-ticket { max-height: none; min-height: 0; }
     .linea-ticket { grid-template-columns: auto minmax(0, 1fr) auto; }

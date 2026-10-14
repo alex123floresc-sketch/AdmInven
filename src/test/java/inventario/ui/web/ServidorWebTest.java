@@ -146,6 +146,40 @@ class ServidorWebTest {
         assertEquals(400, vendedor.pedir("POST", "/api/ventas", "{\"lineas\":[]}").estado());
     }
 
+    @Test
+    void laTiendaRecibePedidosSinSesionYElPersonalLosAtiende() throws IOException {
+        Navegador cliente = new Navegador();
+        Respuesta catalogo = cliente.pedir("GET", "/api/catalogo", null);
+        assertEquals(200, catalogo.estado());
+        assertTrue(catalogo.cuerpo().contains("\"disponibilidad\":\"DISPONIBLE\""));
+        assertFalse(catalogo.cuerpo().contains("costo"));
+        assertFalse(catalogo.cuerpo().contains("\"stock\""));
+
+        Respuesta pedido = cliente.pedir("POST", "/api/pedidos", "{\"cliente\":\"Rosa\",\"telefono\":\"987654321\","
+                + "\"lineas\":[{\"codigo\":\"ARR-5K\",\"cantidad\":\"1\"}]}");
+        assertEquals(201, pedido.estado());
+        long numero = new ObjectMapper().readTree(pedido.cuerpo()).get("numero").asLong();
+        // El cliente no puede ver la lista de pedidos (tiene datos de otros clientes).
+        assertEquals(401, cliente.pedir("GET", "/api/pedidos", null).estado());
+
+        Navegador vendedor = new Navegador();
+        vendedor.entrar("vendedor", "vendedor123");
+        int arroz = stock(vendedor, "ARR-5K");
+        assertTrue(vendedor.pedir("GET", "/api/pedidos/pendientes", null).cuerpo().contains("\"cantidad\":1"));
+        assertEquals(200, vendedor.pedir("POST", "/api/pedidos/" + numero + "/atender", null).estado());
+        assertEquals(arroz - 1, stock(vendedor, "ARR-5K"));
+
+        // Desde la misma dirección solo se aceptan unos pocos pedidos seguidos.
+        for (int i = 0; i < 4; i++) {
+            assertEquals(201, cliente.pedir("POST", "/api/pedidos", "{\"cliente\":\"Rosa\",\"telefono\":\"987654321\","
+                    + "\"lineas\":[{\"codigo\":\"AGU-625\",\"cantidad\":\"1\"}]}").estado());
+        }
+        Respuesta excesivo = cliente.pedir("POST", "/api/pedidos", "{\"cliente\":\"Rosa\",\"telefono\":\"987654321\","
+                + "\"lineas\":[{\"codigo\":\"AGU-625\",\"cantidad\":\"1\"}]}");
+        assertEquals(400, excesivo.estado());
+        assertTrue(excesivo.cuerpo().contains("Espere unos minutos"));
+    }
+
     private static int stock(Navegador n, String codigo) throws IOException {
         for (JsonNode p : new ObjectMapper().readTree(n.pedir("GET", "/api/productos", null).cuerpo())) {
             if (p.get("codigo").asText().equals(codigo)) {

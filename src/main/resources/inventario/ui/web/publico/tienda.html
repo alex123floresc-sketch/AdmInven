@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tienda en línea</title>
+    <meta name="description" content="Vea nuestros productos y precios, y haga su pedido para recogerlo en tienda.">
+    <link rel="icon" href="icono.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="estilos.css">
+    <script src="comun.js" defer></script>
+    <script src="tienda.js" defer></script>
+</head>
+<body class="tienda">
+<noscript>Esta tienda necesita JavaScript activado.</noscript>
+
+<header class="encabezado tienda-encabezado">
+    <a class="marca" href="tienda.html">
+        <img src="icono.svg" alt="" width="32" height="32">
+        <span class="encabezado-titulo">Tienda en línea</span>
+    </a>
+    <div class="encabezado-usuario">
+        <button class="boton encabezado-boton boton-tema" type="button"></button>
+        <a class="boton encabezado-boton" href="/">Personal</a>
+        <button id="boton-carrito" class="boton primario boton-carrito" type="button">
+            <span id="carrito-icono"></span><span>Mi pedido</span>
+            <span id="carrito-cantidad" class="contador" hidden></span>
+        </button>
+    </div>
+</header>
+
+<main class="contenido tienda-contenido">
+    <section class="portada">
+        <h1>Haga su pedido en línea y recójalo en tienda</h1>
+        <p class="suave">Elija sus productos, déjenos su nombre y teléfono, y le avisamos cuando esté listo.
+            Paga al recoger.</p>
+    </section>
+    <div class="barra">
+        <input type="search" id="buscar" placeholder="Buscar productos" aria-label="Buscar productos">
+        <select id="orden" aria-label="Ordenar">
+            <option value="nombre">Nombre (A-Z)</option>
+            <option value="menor">Precio: menor a mayor</option>
+            <option value="mayor">Precio: mayor a menor</option>
+        </select>
+    </div>
+    <nav id="categorias" class="chips" aria-label="Categorías"></nav>
+    <p id="estado-catalogo" class="suave">Cargando productos…</p>
+    <section id="catalogo" class="catalogo" aria-live="polite"></section>
+</main>
+
+<!-- Pedido (carrito) -->
+<dialog id="carrito" class="dialogo panel-lateral" aria-labelledby="carrito-titulo">
+    <form id="form-pedido" class="carrito">
+        <div class="panel-cabecera">
+            <h2 id="carrito-titulo">Mi pedido</h2>
+            <button id="cerrar-carrito" class="boton chico" type="button">Cerrar</button>
+        </div>
+        <div id="carrito-lineas" class="lineas-ticket"></div>
+        <div class="total-ticket"><span>Total</span><strong id="carrito-total"></strong></div>
+        <div id="carrito-datos" class="carrito-datos">
+            <label class="campo">Su nombre
+                <input name="cliente" required maxlength="80" autocomplete="name"></label>
+            <label class="campo">Teléfono o WhatsApp
+                <input name="telefono" required inputmode="tel" autocomplete="tel" placeholder="Ej. 987 654 321"></label>
+            <label class="campo">Nota (opcional)
+                <textarea name="nota" rows="2" maxlength="300" placeholder="Ej. Paso a recoger a las 6 p. m."></textarea>
+            </label>
+            <p id="carrito-error" class="mensaje-error" role="alert" hidden></p>
+            <button id="enviar-pedido" class="boton primario ancho" type="submit">Enviar pedido</button>
+            <p class="suave pie-carrito">Los precios pueden cambiar hasta que confirmemos su pedido.</p>
+        </div>
+    </form>
+</dialog>
+
+<div id="avisos" class="avisos" aria-live="polite"></div>
+</body>
+</html>

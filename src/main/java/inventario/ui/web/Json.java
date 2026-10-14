@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import inventario.modelo.Movimiento;
+import inventario.modelo.Pedido;
 import inventario.modelo.Producto;
 import inventario.modelo.Proveedor;
 import inventario.modelo.Rol;
@@ -63,6 +64,38 @@ final class Json {
         }
     }
 
+    /**
+     * Producto tal como lo ve un cliente de la tienda: sin costo ni stock exacto.
+     *
+     * @param disponibilidad DISPONIBLE, POCAS (stock bajo) o AGOTADO
+     */
+    record CatalogoJson(String codigo, String nombre, String categoria, BigDecimal precio, String disponibilidad) {
+
+        static CatalogoJson de(Producto p) {
+            String disponibilidad = p.getStock() == 0 ? "AGOTADO" : p.tieneStockBajo() ? "POCAS" : "DISPONIBLE";
+            return new CatalogoJson(p.getCodigo(), p.getNombre(), p.getCategoria(), p.getPrecio(), disponibilidad);
+        }
+    }
+
+    /** Respuesta al cliente que hizo un pedido: solo su número y su total. */
+    record PedidoRecibido(long numero, BigDecimal total) {
+    }
+
+    record PedidoJson(long id, LocalDateTime fecha, String cliente, String telefono, String nota,
+                      List<LineaPedidoJson> lineas, BigDecimal total, String estado, String estadoNombre,
+                      String atendidoPor, LocalDateTime fechaAtencion) {
+
+        static PedidoJson de(Pedido p) {
+            return new PedidoJson(p.id(), p.fecha(), p.cliente(), p.telefono(), p.nota(),
+                    p.lineas().stream().map(l -> new LineaPedidoJson(l.codigo(), l.nombre(), l.cantidad(), l.precio(),
+                            l.subtotal())).toList(),
+                    p.total(), p.estado().name(), p.estado().toString(), p.atendidoPor(), p.fechaAtencion());
+        }
+    }
+
+    record LineaPedidoJson(String codigo, String nombre, int cantidad, BigDecimal precio, BigDecimal subtotal) {
+    }
+
     record ProveedorJson(long id, String nombre, String documento, String telefono, String email, boolean activo) {
 
         static ProveedorJson de(Proveedor p) {
@@ -105,6 +138,9 @@ final class Json {
     }
 
     record DatosVenta(List<LineaTicket> lineas, String nota) {
+    }
+
+    record DatosPedido(String cliente, String telefono, String nota, List<LineaTicket> lineas) {
     }
 
     record DatosProveedor(String nombre, String documento, String telefono, String email) {

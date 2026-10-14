@@ -3,10 +3,12 @@ package inventario;
 import inventario.persistencia.ImportadorCsv;
 import inventario.persistencia.sqlite.BaseDeDatos;
 import inventario.persistencia.sqlite.SqliteMovimientoRepositorio;
+import inventario.persistencia.sqlite.SqlitePedidoRepositorio;
 import inventario.persistencia.sqlite.SqliteProductoRepositorio;
 import inventario.persistencia.sqlite.SqliteProveedorRepositorio;
 import inventario.persistencia.sqlite.SqliteUsuarioRepositorio;
 import inventario.servicio.InventarioServicio;
+import inventario.servicio.PedidoServicio;
 import inventario.servicio.ProveedorServicio;
 import inventario.servicio.ReporteServicio;
 import inventario.servicio.RespaldoServicio;
@@ -30,7 +32,8 @@ public final class Aplicacion implements AutoCloseable {
 
     /** Los servicios que ve un usuario; todos comparten su {@link Sesion}. */
     public record Servicios(InventarioServicio inventario, ProveedorServicio proveedores, ReporteServicio reportes,
-                            UsuarioServicio usuarios, RespaldoServicio respaldos, Sesion sesion) {
+                            UsuarioServicio usuarios, RespaldoServicio respaldos, PedidoServicio pedidos,
+                            Sesion sesion) {
     }
 
     private final BaseDeDatos bd;
@@ -39,6 +42,7 @@ public final class Aplicacion implements AutoCloseable {
     private final SqliteMovimientoRepositorio repoMovimientos;
     private final SqliteProveedorRepositorio repoProveedores;
     private final SqliteUsuarioRepositorio repoUsuarios;
+    private final SqlitePedidoRepositorio repoPedidos;
     private final Clock reloj = Clock.systemDefaultZone();
     /** Servicios de la ventana o la consola, donde hay un único usuario a la vez. */
     private final Servicios local;
@@ -54,6 +58,7 @@ public final class Aplicacion implements AutoCloseable {
             repoMovimientos = new SqliteMovimientoRepositorio(bd);
             repoProveedores = new SqliteProveedorRepositorio(bd);
             repoUsuarios = new SqliteUsuarioRepositorio(bd);
+            repoPedidos = new SqlitePedidoRepositorio(bd);
             if (baseNueva && Files.exists(carpetaDatos.resolve("productos.csv"))) {
                 // Primera ejecución tras pasar de CSV a SQLite: se conservan los datos anteriores.
                 ImportadorCsv.Resultado r = ImportadorCsv.importar(carpetaDatos, repoProductos, repoMovimientos, bd);
@@ -83,12 +88,14 @@ public final class Aplicacion implements AutoCloseable {
 
     /** Servicios para una sesión propia; el servidor web crea uno por cada persona conectada. */
     public Servicios serviciosPara(Sesion sesion) {
+        InventarioServicio inventario = new InventarioServicio(repoProductos, repoMovimientos, bd, reloj, sesion);
         return new Servicios(
-                new InventarioServicio(repoProductos, repoMovimientos, bd, reloj, sesion),
+                inventario,
                 new ProveedorServicio(repoProveedores, sesion),
                 new ReporteServicio(repoProductos, repoMovimientos, repoProveedores, reloj, sesion),
                 new UsuarioServicio(repoUsuarios, sesion),
                 new RespaldoServicio(bd, reloj, sesion),
+                new PedidoServicio(repoPedidos, inventario, bd, reloj, sesion),
                 sesion);
     }
 
@@ -123,6 +130,10 @@ public final class Aplicacion implements AutoCloseable {
 
     public RespaldoServicio respaldos() {
         return local.respaldos();
+    }
+
+    public PedidoServicio pedidos() {
+        return local.pedidos();
     }
 
     /** Mensajes del arranque que conviene mostrar al usuario (importación, líneas ignoradas...). */
