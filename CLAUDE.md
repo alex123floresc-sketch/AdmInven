@@ -23,6 +23,8 @@ Se desarrolló por fases siguiendo la guía del proyecto: https://claude.ai/code
   costos a quien no tiene `VER_REPORTES`). Toda ruta nueva va envuelta en `publica(...)`/`privada(...)`: atienden
   de a una petición porque SQLite usa una sola conexión. Página en `resources/inventario/ui/web/publico`, sin
   librerías externas; todo texto dinámico pasa por `esc()` y no se usan estilos en línea (CSP `default-src 'self'`).
+  Personal: `index.html` + `app.js`; tienda pública para clientes: `tienda.html` + `tienda.js` (solo usa
+  `/api/catalogo` y `POST /api/pedidos`, nunca datos con costos o stock exacto); utilidades de ambas en `comun.js`.
 - Estilos de la ventana en `src/main/resources/inventario/ui/fx/estilos.css` (colores como variables en `.root`).
 
 ## Compilar y probar
